@@ -61,6 +61,15 @@ macro_rules! impl_q64 {
             pub fn checked_shr(self, rhs: u32) -> Option<Self> {
                 self.0.checked_shr(rhs).map(|value| Self(value))
             }
+
+            #[inline]
+            pub fn square(self) -> Self {
+                let intermediate = ($intermediate_type::from(self.0) * $intermediate_type::from(self.0)) >> 64usize;
+
+                let result = <$int_type>::try_from(intermediate).expect("square overflow");
+
+                Self(result)
+            }
         }
         
         impl Add<$name> for $name {
@@ -86,7 +95,7 @@ macro_rules! impl_q64 {
 
             #[inline]
             fn mul(self, other: Self) -> Self {
-                let intermediate = ($intermediate_type::from(self.0) * $intermediate_type::from(other.0)) >> 64;
+                let intermediate = ($intermediate_type::from(self.0) * $intermediate_type::from(other.0)) >> 64usize;
 
                 let result = <$int_type>::try_from(intermediate).expect("multiplication overflow");
 

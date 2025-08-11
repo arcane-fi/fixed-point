@@ -504,7 +504,22 @@ macro_rules! construct_sint {
             fn shr(self, rhs: usize) -> Self { self.logical_shr(rhs) }
         }
 
+        impl core::ops::ShrAssign<usize> for $sname {
+            #[inline]
+            fn shr_assign(&mut self, rhs: usize) { *self = (*self).logical_shr(rhs); }
+        }
 
+        impl core::ops::Shr<u32> for $sname {
+            type Output = Self;
+
+            #[inline]
+            fn shr(self, rhs: u32) -> Self { self.logical_shr(rhs as usize) }
+        }
+
+        impl core::ops::ShrAssign<u32> for $sname {
+            #[inline]
+            fn shr_assign(&mut self, rhs: u32) { *self = (*self).logical_shr(rhs as usize); }
+        }
 
         // Comparison - delegate to signed comparison
         impl PartialOrd for $sname {
