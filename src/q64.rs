@@ -14,6 +14,8 @@ macro_rules! impl_q64 {
         impl $name {
             pub const ONE: Self = Self(1 << 64);
             pub const ZERO: Self = Self(0);
+            pub const MAX: Self = Self(<$int_type>::MAX);
+            pub const MIN: Self = Self(<$int_type>::MIN);
 
             /// ## Create a new Q64.64
             /// 
