@@ -198,13 +198,23 @@ impl Q64 {
 
 impl SQ64 {
     #[inline]
-    pub fn abs(self) -> SQ64 {
+    pub const fn abs(self) -> SQ64 {
         Self(self.0.abs())
     }
     
     #[inline]
-    pub fn unsigned_abs(self) -> Q64 {
+    pub const fn unsigned_abs(self) -> Q64 {
         Q64((self.0).unsigned_abs())
+    }
+
+    #[inline]
+    pub fn from_int<T: Into<i128>>(value: T) -> Self {
+        SQ64((value.into()) << 64)
+    }
+
+    #[inline]
+    pub fn try_from_int<T: TryInto<i128>>(value: T) -> Result<Self, FixedPointError> {
+        Ok(SQ64(value.try_into().map_err(|_| FixedPointError::IntegerConversionError)? << 64))
     }
 }
 
