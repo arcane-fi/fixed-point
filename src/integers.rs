@@ -14,6 +14,11 @@ construct_uint! {
     pub struct U192(3);
 }
 
+construct_uint! {
+    /// with 128-bits of precision, consisting of two 64-bit words.
+    pub struct U128(2);
+}
+
 impl U256 {
     pub fn wrapping_add(&self, other: U256) -> U256 {
         let (result, _) = self.overflowing_add(other);
