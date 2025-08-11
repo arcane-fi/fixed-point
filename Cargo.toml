@@ -2,5 +2,8 @@
 name = "fixed-point"
 version = "0.1.0"
 edition = "2021"
+authors = ["Levi Bland <levi@arcane.fi>"]
+license = "Apache-2.0"
 
 [dependencies]
+uint = { git = "https://github.com/arcane-fi/parity-common", package = "uint" }
