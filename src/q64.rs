@@ -8,11 +8,12 @@ macro_rules! impl_q64 {
     ( $(#[$attr:meta])* $visibility:vis struct $name:ident ( $int_type:ty, $intermediate_type:ident ); ) => {
         #[repr(transparent)]
         $(#[$attr])*
-        #[derive(Copy, Clone, Eq, PartialEq, Hash)]
+        #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Hash)]
         $visibility struct $name(pub $int_type);
 
         impl $name {
             pub const ONE: Self = Self(1 << 64);
+            pub const ZERO: Self = Self(0);
 
             /// ## Create a new Q64.64
             /// 
@@ -42,6 +43,21 @@ macro_rules! impl_q64 {
                 let value_q64 = ((value as $int_type) << 64) / (SCALE as $int_type);
 
                 Self(value_q64)
+            }
+
+            #[inline]
+            pub fn leading_zeros(&self) -> u32 {
+                self.0.leading_zeros()
+            }
+
+            #[inline]
+            pub fn checked_shl(self, rhs: u32) -> Option<Self> {
+                self.0.checked_shl(rhs).map(|value| Self(value))
+            }
+
+            #[inline]
+            pub fn checked_shr(self, rhs: u32) -> Option<Self> {
+                self.0.checked_shr(rhs).map(|value| Self(value))
             }
         }
         
@@ -156,5 +172,22 @@ impl Q64 {
     pub fn try_to_scaled_u64(self) -> Result<u64, FixedPointError> {
         let value = (self.0 * SCALE) >> 64;
         value.try_into().map_err(|_| FixedPointError::IntegerConversionError)
+    }
+
+    #[inline]
+    pub fn abs(self) -> Self {
+        self
+    }
+}
+
+impl SQ64 {
+    #[inline]
+    pub fn abs(self) -> SQ64 {
+        Self(self.0.abs())
+    }
+    
+    #[inline]
+    pub fn unsigned_abs(self) -> Q64 {
+        Q64((self.0).unsigned_abs())
     }
 }
