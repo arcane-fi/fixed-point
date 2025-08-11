@@ -100,6 +100,14 @@ impl TryFrom<U256> for U192 {
     }
 }
 
+impl From<U128> for U192 {
+    fn from(value: U128) -> U192 {
+        let U128(ref arr) = value;
+
+        U192([arr[0], arr[1], 0])
+    }
+}
+
 /* Signed Integers */
 
 construct_sint! {
