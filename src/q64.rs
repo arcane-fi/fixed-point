@@ -106,6 +106,20 @@ macro_rules! impl_q64 {
                 Self(result)
             }
         }
+        
+        impl AddAssign<$name> for $name {
+            #[inline]
+            fn add_assign(&mut self, other: Self) {
+                self.0 += other.0;
+            }
+        }
+
+        impl SubAssign<$name> for $name {
+            #[inline]
+            fn sub_assign(&mut self, other: Self) {
+                self.0 -= other.0;
+            }
+        }
 
         impl Shl<usize> for $name {
             type Output = Self;
