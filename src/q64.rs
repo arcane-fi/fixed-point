@@ -193,3 +193,21 @@ impl SQ64 {
         Q64((self.0).unsigned_abs())
     }
 }
+
+impl From<Q64> for SQ64 {
+    fn from(value: Q64) -> Self {
+        Self(value.0 as i128)
+    }
+}
+
+impl TryFrom<SQ64> for Q64 {
+    type Error = FixedPointError;
+
+    fn try_from(value: SQ64) -> Result<Q64, Self::Error> {
+        if value.0.is_negative() {
+            return Err(FixedPointError::IntegerConversionError);
+        }
+
+        Ok(Q64(value.0 as u128))
+    } 
+}
