@@ -59,6 +59,26 @@ impl U192 {
     }
 }
 
+impl U128 {
+    pub fn wrapping_add(&self, other: U128) -> U128 {
+        let (result, _) = self.overflowing_add(other);
+
+        result
+    }
+
+    pub fn wrapping_sub(&self, other: U128) -> U128 {
+        let (result, _) = self.overflowing_sub(other);
+
+        result
+    }
+
+    pub fn wrapping_mul(&self, other: U128) -> U128 {
+        let (result, _) = self.overflowing_mul(other);
+
+        result
+    }
+}
+
 impl From<U192> for U256 {
     fn from(value: U192) -> U256 {
         let U192(ref arr) = value;
@@ -88,6 +108,10 @@ construct_sint! {
 
 construct_sint! {
     pub struct I192(U192);
+}
+
+construct_sint! {
+    pub struct I128(U128);
 }
 
 // I192 -> I256 (sign-extend one limb)
