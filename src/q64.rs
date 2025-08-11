@@ -1,4 +1,4 @@
-use crate::{error::FixedPointError, integers::{U256, I256}};
+use crate::{error::FixedPointError, integers::{I192, I256, U192, U256}};
 use std::ops::*;
 
 /// Standard scale of 9 decimals
@@ -165,21 +165,39 @@ macro_rules! impl_q64 {
 }
 
 impl_q64! {
-    /// Unsigned Q64.64 fixed-point number
+    /// Unsigned Q64.64 fixed-point number type, with 192-bit intermediate type
     /// 
     /// ## Fields
     /// 
     /// * `0` - The Q64.64 value represented as a u128
-    pub struct Q64(u128, U256);
+    pub struct Q64(u128, U192);
 }
 
 impl_q64! {
-    /// Signed Q64.64 fixed-point number
+    /// Signed Q64.64 fixed-point number type, with 192-bit intermediate type
     /// 
     /// ## Fields
     /// 
     /// * `0` - The Q64.64 value represented as a i128
-    pub struct SQ64(i128, I256);
+    pub struct SQ64(i128, I192);
+}
+
+impl_q64! {
+    /// Unsigned Q64.64 fixed-point number type, with 256-bit intermediate type
+    /// 
+    /// ## Fields
+    /// 
+    /// * `0` - The Q64.64 value represented as a u128
+    pub struct Q64Large(u128, U256);
+}
+
+impl_q64! {
+    /// Signed Q64.64 fixed-point number type, with 256-bit intermediate type
+    /// 
+    /// ## Fields
+    /// 
+    /// * `0` - The Q64.64 value represented as a i128
+    pub struct SQ64Large(i128, I256);
 }
 
 impl Q64 {
@@ -227,6 +245,64 @@ impl SQ64 {
     }
 }
 
+impl SQ64Large {
+    #[inline]
+    pub const fn abs(self) -> SQ64Large {
+        Self(self.0.abs())
+    }
+    
+    #[inline]
+    pub const fn unsigned_abs(self) -> Q64Large {
+        Q64Large((self.0).unsigned_abs())
+    }
+
+    #[inline]
+    pub fn from_int<T: Into<i128>>(value: T) -> Self {
+        SQ64Large((value.into()) << 64)
+    }
+
+    #[inline]
+    pub fn try_from_int<T: TryInto<i128>>(value: T) -> Result<Self, FixedPointError> {
+        Ok(SQ64Large(value.try_into().map_err(|_| FixedPointError::IntegerConversionError)? << 64))
+    }
+}
+
+impl From<SQ64> for SQ64Large {
+    fn from(value: SQ64) -> Self {
+        Self(value.0)
+    }
+}
+
+impl From<SQ64Large> for SQ64 {
+    fn from(value: SQ64Large) -> Self {
+        Self(value.0)
+    }
+}
+
+impl From<Q64Large> for Q64 {
+    fn from(value: Q64Large) -> Self {
+        Self(value.0)
+    }
+}
+
+impl From<Q64> for Q64Large {
+    fn from(value: Q64) -> Self {
+        Self(value.0)
+    }
+}
+
+impl From<Q64> for SQ64Large {
+    fn from(value: Q64) -> Self {
+        Self(value.0 as i128)
+    }
+}
+
+impl From<Q64Large> for SQ64Large {
+    fn from(value: Q64Large) -> Self {
+        Self(value.0 as i128)
+    }
+}
+
 impl From<Q64> for SQ64 {
     fn from(value: Q64) -> Self {
         Self(value.0 as i128)
@@ -243,4 +319,40 @@ impl TryFrom<SQ64> for Q64 {
 
         Ok(Q64(value.0 as u128))
     } 
+}
+
+impl TryFrom<SQ64Large> for Q64 {
+    type Error = FixedPointError;
+
+    fn try_from(value: SQ64Large) -> Result<Q64, Self::Error> {
+        if value.0.is_negative() {
+            return Err(FixedPointError::IntegerConversionError);
+        }
+
+        Ok(Q64(value.0 as u128))
+    }
+}
+
+impl TryFrom<SQ64> for Q64Large {
+    type Error = FixedPointError;
+
+    fn try_from(value: SQ64) -> Result<Q64Large, Self::Error> {
+        if value.0.is_negative() {
+            return Err(FixedPointError::IntegerConversionError);
+        }
+
+        Ok(Q64Large(value.0 as u128))
+    }
+}
+
+impl TryFrom<SQ64Large> for Q64Large {
+    type Error = FixedPointError;
+
+    fn try_from(value: SQ64Large) -> Result<Q64Large, Self::Error> {
+        if value.0.is_negative() {
+            return Err(FixedPointError::IntegerConversionError);
+        }
+
+        Ok(Q64Large(value.0 as u128))
+    }
 }
