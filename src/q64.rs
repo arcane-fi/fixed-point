@@ -245,6 +245,15 @@ impl SQ64 {
     }
 }
 
+impl Neg for SQ64 {
+    type Output = Self;
+
+    #[inline]
+    fn neg(self) -> Self {
+        Self(-self.0)
+    }
+}
+
 impl SQ64Large {
     #[inline]
     pub const fn abs(self) -> SQ64Large {
@@ -264,6 +273,15 @@ impl SQ64Large {
     #[inline]
     pub fn try_from_int<T: TryInto<i128>>(value: T) -> Result<Self, FixedPointError> {
         Ok(SQ64Large(value.try_into().map_err(|_| FixedPointError::IntegerConversionError)? << 64))
+    }
+}
+
+impl Neg for SQ64Large {
+    type Output = Self;
+
+    #[inline]
+    fn neg(self) -> Self {
+        Self(-self.0)
     }
 }
 

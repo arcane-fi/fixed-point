@@ -20,18 +20,21 @@ construct_uint! {
 }
 
 impl U256 {
+    #[inline]
     pub fn wrapping_add(&self, other: U256) -> U256 {
         let (result, _) = self.overflowing_add(other);
 
         result
     }
 
+    #[inline]
     pub fn wrapping_sub(&self, other: U256) -> U256 {
         let (result, _) = self.overflowing_sub(other);
 
         result
     }
 
+    #[inline]
     pub fn wrapping_mul(&self, other: U256) -> U256 {
         let (result, _) = self.overflowing_mul(other);
 
@@ -40,18 +43,21 @@ impl U256 {
 }
 
 impl U192 {
+    #[inline]
     pub fn wrapping_add(&self, other: U192) -> U192 {
         let (result, _) = self.overflowing_add(other);
 
         result
     }
 
+    #[inline]
     pub fn wrapping_sub(&self, other: U192) -> U192 {
         let (result, _) = self.overflowing_sub(other);
 
         result
     }
 
+    #[inline]
     pub fn wrapping_mul(&self, other: U192) -> U192 {
         let (result, _) = self.overflowing_mul(other);
 
@@ -60,18 +66,21 @@ impl U192 {
 }
 
 impl U128 {
+    #[inline]
     pub fn wrapping_add(&self, other: U128) -> U128 {
         let (result, _) = self.overflowing_add(other);
 
         result
     }
 
+    #[inline]
     pub fn wrapping_sub(&self, other: U128) -> U128 {
         let (result, _) = self.overflowing_sub(other);
 
         result
     }
 
+    #[inline]
     pub fn wrapping_mul(&self, other: U128) -> U128 {
         let (result, _) = self.overflowing_mul(other);
 
