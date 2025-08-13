@@ -5,7 +5,7 @@ macro_rules! impl_q64 {
     ( $(#[$attr:meta])* $visibility:vis struct $name:ident ( $int_type:ty, $intermediate_type:ident ); ) => {
         #[repr(transparent)]
         $(#[$attr])*
-        #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash, Debug)]
+        #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash, Debug, Default)]
         $visibility struct $name(pub $int_type);
 
         impl $name {
