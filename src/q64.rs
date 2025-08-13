@@ -1,14 +1,11 @@
-use crate::{error::FixedPointError, integers::{I192, I256, U192, U256}};
+use crate::{error::FixedPointError, integers::{I192, I256, U192, U256}, utils::extract_from_raw_bytes};
 use std::ops::*;
-
-/// Standard scale of 9 decimals
-pub const SCALE: u128 = 1_000_000_000;
 
 macro_rules! impl_q64 {
     ( $(#[$attr:meta])* $visibility:vis struct $name:ident ( $int_type:ty, $intermediate_type:ident ); ) => {
         #[repr(transparent)]
         $(#[$attr])*
-        #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Hash, Debug)]
+        #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash, Debug)]
         $visibility struct $name(pub $int_type);
 
         impl $name {
@@ -16,6 +13,7 @@ macro_rules! impl_q64 {
             pub const ZERO: Self = Self(0);
             pub const MAX: Self = Self(<$int_type>::MAX);
             pub const MIN: Self = Self(<$int_type>::MIN);
+            pub const U64_SCALE: u64 = 1_000_000_000;
 
             /// ## Create a new Q64.64
             /// 
@@ -30,7 +28,7 @@ macro_rules! impl_q64 {
                 Self(value)
             }
 
-            /// ## Convert a scaled u64 to a Q64.64
+            /// ## Convert a scaled 9-decimal u64 to a Q64.64
             /// 
             /// i.e. X * 10^9 -> (X << 64) / 10^9
             /// 
@@ -42,7 +40,25 @@ macro_rules! impl_q64 {
             /// 
             /// The Q64.64 representation of the scaled value
             pub fn from_scaled_u64(value: u64) -> Self {
-                let value_q64 = ((value as $int_type) << 64) / (SCALE as $int_type);
+                let value_q64 = ((value as $int_type) << 64) / (Self::U64_SCALE as $int_type);
+
+                Self(value_q64)
+            }
+
+            /// ## Convert a x-decimal scaled u64 to a Q64.64
+            /// 
+            /// i.e. X * 10^x -> (X << 64) / 10^x
+            /// 
+            /// ### Arguments
+            /// 
+            /// * `value` - The scaled value to convert to Q64.64
+            /// * `decimals` - The number of decimals in the scaled value
+            /// 
+            /// ### Returns
+            /// 
+            /// The Q64.64 representation of the scaled value
+            pub fn from_x_scaled_u64(value: u64, decimals: u32) -> Self {
+                let value_q64 = ((value as $int_type) << 64) / (10u64.pow(decimals) as $int_type);
 
                 Self(value_q64)
             }
@@ -69,6 +85,83 @@ macro_rules! impl_q64 {
                 let result = <$int_type>::try_from(intermediate).expect("square overflow");
 
                 Self(result)
+            }
+
+            #[inline]
+            pub fn saturating_add(self, other: Self) -> Self {
+                Self(self.0.saturating_add(other.0))
+            }
+
+            #[inline]
+            pub fn saturating_sub(self, other: Self) -> Self {
+                Self(self.0.saturating_sub(other.0))
+            }
+
+            #[inline]
+            pub fn checked_add(self, other: Self) -> Option<Self> {
+                let result = self.0.checked_add(other.0);
+
+                result.map(|value| Self(value))
+            }
+
+            #[inline]
+            pub fn checked_sub(self, other: Self) -> Option<Self> {
+                let result = self.0.checked_sub(other.0);
+
+                result.map(|value| Self(value))
+            }
+
+            #[inline]
+            pub fn count_ones(&self) -> u32 {
+                self.0.count_ones()
+            }
+
+            #[inline]
+            pub fn count_zeros(&self) -> u32 {
+                self.0.count_zeros()
+            }
+
+            #[inline]
+            pub fn leading_ones(&self) -> u32 {
+                self.0.leading_ones()
+            }
+
+            #[inline]
+            pub fn trailing_ones(&self) -> u32 {
+                self.0.trailing_ones()
+            }
+
+            #[inline]
+            pub fn trailing_zeros(&self) -> u32 {
+                self.0.trailing_zeros()
+            }
+
+            #[inline]
+            pub fn rotate_left(self, bits: u32) -> Self {
+                Self(self.0.rotate_left(bits))
+            }
+
+            #[inline]
+            pub fn rotate_right(self, bits: u32) -> Self {
+                Self(self.0.rotate_right(bits))
+            }
+
+            #[inline]
+            pub fn reverse_bits(self) -> Self {
+                Self(self.0.reverse_bits())
+            }
+
+            #[inline]
+            pub fn swap_bytes(self) -> Self {
+                Self(self.0.swap_bytes())
+            }
+
+            /// Little endian bytes to Q64
+            #[inline]
+            pub fn try_from_bytes(bytes: &[u8]) -> Result<Self, FixedPointError> {
+                let value = <$int_type>::from_le_bytes(extract_from_raw_bytes(bytes, 0..16)?);
+
+                Ok(Self(value))
             }
         }
         
@@ -130,6 +223,20 @@ macro_rules! impl_q64 {
             }
         }
 
+        impl MulAssign<$name> for $name {
+            #[inline]
+            fn mul_assign(&mut self, other: Self) {
+                *self = *self * other;
+            }
+        }
+
+        impl DivAssign<$name> for $name {
+            #[inline]
+            fn div_assign(&mut self, other: Self) {
+                *self = *self * other;
+            }
+        }
+
         impl Shl<usize> for $name {
             type Output = Self;
 
@@ -159,6 +266,117 @@ macro_rules! impl_q64 {
             #[inline]
             fn shr_assign(&mut self, rhs: usize) {
                 self.0 >>= rhs;
+            }
+        }
+
+        impl BitAnd<$name> for $name {
+            type Output = Self;
+
+            #[inline]
+            fn bitand(self, other: Self) -> Self {
+                Self(self.0 & other.0)
+            }
+        }
+
+        impl BitAndAssign<$name> for $name {
+            #[inline]
+            fn bitand_assign(&mut self, other: Self) {
+                self.0 &= other.0;
+            }
+        }
+
+        impl BitOr<$name> for $name {
+            type Output = Self;
+
+            #[inline]
+            fn bitor(self, other: Self) -> Self {
+                Self(self.0 | other.0)
+            }
+        }
+
+        impl BitOrAssign<$name> for $name {
+            #[inline]
+            fn bitor_assign(&mut self, other: Self) {
+                self.0 |= other.0;
+            }
+        }
+
+        impl BitXor<$name> for $name {
+            type Output = Self;
+
+            #[inline]
+            fn bitxor(self, other: Self) -> Self {
+                Self(self.0 ^ other.0)
+            }
+        }
+
+        impl BitXorAssign<$name> for $name {
+            #[inline]
+            fn bitxor_assign(&mut self, other: Self) {
+                self.0 ^= other.0;
+            }
+        }
+
+        impl Not for $name {
+            type Output = Self;
+
+            #[inline]
+            fn not(self) -> Self {
+                Self(!self.0)
+            }
+        }
+
+        impl TryFrom<i32> for $name {
+            type Error = FixedPointError;
+
+            /// Converts from an unscaled i32 to a Q64.64
+            fn try_from(value: i32) -> Result<Self, Self::Error> {
+                let value = <$int_type>::try_from(value).map_err(|_| FixedPointError::IntegerConversionError)?;
+                Ok(Self(value << 64))
+            }
+        }
+
+        impl From<u32> for $name {
+            /// Converts from an unscaled u32 to a Q64.64
+            fn from(value: u32) -> Self {
+                Self(<$int_type>::from(value) << 64)
+            }
+        }
+
+        impl TryFrom<i64> for $name {
+            type Error = FixedPointError;
+
+            /// Converts from an unscaled i64 to a Q64.64
+            fn try_from(value: i64) -> Result<Self, Self::Error> {
+                let value = <$int_type>::try_from(value).map_err(|_| FixedPointError::IntegerConversionError)?;
+                Ok(Self(value << 64))
+            }
+        }
+
+        impl From<u64> for $name {
+            /// Converts from an unscaled u64 to a Q64.64
+            fn from(value: u64) -> Self {
+                Self(<$int_type>::from(value) << 64)
+            }
+        }
+
+        impl TryFrom<i128> for $name {
+            type Error = FixedPointError;
+
+            /// Converts from an unscaled i128 to a Q64.64
+            fn try_from(value: i128) -> Result<Self, Self::Error> {
+                let value = <$int_type>::try_from(value).map_err(|_| FixedPointError::IntegerConversionError)?;
+                Ok(Self(value << 64))
+            }
+        }
+
+        impl TryFrom<u128> for $name {
+            type Error = FixedPointError;
+
+            /// Converts from an unscaled u128 to a Q64.64
+            fn try_from(value: u128) -> Result<Self, Self::Error> {
+                let value = <$int_type>::try_from(value).map_err(|_| FixedPointError::IntegerConversionError)?;
+                Ok(Self(value << 64))
             }
         }
     };
@@ -213,13 +431,23 @@ impl Q64 {
     /// 
     /// The scaled u64 representation of the Q64.64 value
     pub fn try_to_scaled_u64(self) -> Result<u64, FixedPointError> {
-        let value = (self.0 * SCALE) >> 64;
+        let value = (self.0 * Self::U64_SCALE as u128) >> 64;
         value.try_into().map_err(|_| FixedPointError::IntegerConversionError)
     }
 
     #[inline]
     pub fn abs(self) -> Self {
         self
+    }
+
+    #[inline]
+    pub fn from_int<T: Into<u128>>(value: T) -> Self {
+        Q64(value.into() << 64)
+    }
+
+    #[inline]
+    pub fn try_from_int<T: TryInto<u128>>(value: T) -> Result<Self, FixedPointError> {
+        Ok(Q64(value.try_into().map_err(|_| FixedPointError::IntegerConversionError)? << 64))
     }
 }
 
