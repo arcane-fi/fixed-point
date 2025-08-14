@@ -163,6 +163,22 @@ macro_rules! impl_q64 {
 
                 Ok(Self(value))
             }
+
+            /// ## Convert a Q64.64 to a scaled u64
+            /// 
+            /// i.e. (X * 10^9) >> 64 -> X * 10^9
+            /// 
+            /// ### Arguments
+            /// 
+            /// * `self` - The Q64.64 value being consumed to create the u64
+            /// 
+            /// ### Returns
+            /// 
+            /// The scaled u64 representation of the Q64.64 value
+            pub fn try_to_scaled_u64(self) -> Result<u64, FixedPointError> {
+                let value = (self.0 * Self::U64_SCALE as $int_type) >> 64;
+                value.try_into().map_err(|_| FixedPointError::IntegerConversionError)
+            }
         }
         
         impl Add<$name> for $name {
@@ -395,6 +411,12 @@ macro_rules! impl_q64 {
                 Ok(Self(value << 64))
             }
         }
+
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "Q64({}), scaled_9_decimal={}", self.0, (*self).try_to_scaled_u64().map_err(|_| std::fmt::Error)?)
+            }
+        }
     };
 }
 
@@ -435,22 +457,6 @@ impl_q64! {
 }
 
 impl Q64 {
-    /// ## Convert a Q64.64 to a scaled u64
-    /// 
-    /// i.e. (X * 10^9) >> 64 -> X * 10^9
-    /// 
-    /// ### Arguments
-    /// 
-    /// * `self` - The Q64.64 value being consumed to create the u64
-    /// 
-    /// ### Returns
-    /// 
-    /// The scaled u64 representation of the Q64.64 value
-    pub fn try_to_scaled_u64(self) -> Result<u64, FixedPointError> {
-        let value = (self.0 * Self::U64_SCALE as u128) >> 64;
-        value.try_into().map_err(|_| FixedPointError::IntegerConversionError)
-    }
-
     #[inline]
     pub fn abs(self) -> Self {
         self
