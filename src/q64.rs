@@ -208,6 +208,15 @@ macro_rules! impl_q64 {
                 Self(result)
             }
         }
+
+        impl Rem<$name> for $name {
+            type Output = Self;
+
+            #[inline]
+            fn rem(self, other: Self) -> Self {
+                Self(self.0 % other.0)
+            }
+        }
         
         impl AddAssign<$name> for $name {
             #[inline]
@@ -234,6 +243,13 @@ macro_rules! impl_q64 {
             #[inline]
             fn div_assign(&mut self, other: Self) {
                 *self = *self * other;
+            }
+        }
+
+        impl RemAssign<$name> for $name {
+            #[inline]
+            fn rem_assign(&mut self, other: Self) {
+                self.0 %= other.0;
             }
         }
 
