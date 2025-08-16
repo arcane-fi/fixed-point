@@ -1,7 +1,7 @@
 use crate::{error::FixedPointError, integers::{I192, I256, U192, U256}, utils::extract_from_raw_bytes};
 use std::ops::*;
 #[cfg(feature = "anchor")]
-use anchor_lang::prelude::{AnchorDeserialize, AnchorSerialize};
+use anchor_lang::{AnchorDeserialize, AnchorSerialize};
 
 macro_rules! impl_q64 {
     ( $(#[$attr:meta])* $visibility:vis struct $name:ident ( $int_type:ty, $intermediate_type:ident ); ) => {
