@@ -2,6 +2,8 @@ use crate::{error::FixedPointError, integers::{I192, I256, U192, U256}, utils::e
 use std::ops::*;
 #[cfg(feature = "anchor")]
 use anchor_lang::{AnchorDeserialize, AnchorSerialize};
+#[cfg(feature = "anchor")]
+use borsh::{BorshDeserialize, BorshSerialize};
 
 macro_rules! impl_q64 {
     ( $(#[$attr:meta])* $visibility:vis struct $name:ident ( $int_type:ty, $intermediate_type:ident ); ) => {

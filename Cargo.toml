@@ -6,10 +6,11 @@ authors = ["Levi Bland <levi@arcane.fi>"]
 license = "Apache-2.0"
 
 [features]
-anchor = ["dep:anchor-lang"]
+anchor = ["dep:anchor-lang", "dep:borsh"]
 
 [dependencies]
 uint = { git = "https://github.com/arcane-fi/parity-common", package = "uint" }
 
 # optional
 anchor-lang = { version = "0.31.1", optional = true }
+borsh = { version = "1.5.7", optional = true }

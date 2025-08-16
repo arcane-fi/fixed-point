@@ -562,6 +562,7 @@ name = "fixed-point"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "borsh 1.5.7",
  "uint",
 ]
 
