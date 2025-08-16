@@ -5,5 +5,11 @@ edition = "2021"
 authors = ["Levi Bland <levi@arcane.fi>"]
 license = "Apache-2.0"
 
+[features]
+anchor = ["dep:anchor-lang"]
+
 [dependencies]
 uint = { git = "https://github.com/arcane-fi/parity-common", package = "uint" }
+
+# optional
+anchor-lang = { version = "0.31.1", optional = true }
