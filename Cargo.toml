@@ -7,3 +7,4 @@ license = "Apache-2.0"
 
 [dependencies]
 uint = { git = "https://github.com/arcane-fi/parity-common", package = "uint" }
+bytemuck = "^1.0"
