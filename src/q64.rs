@@ -79,11 +79,16 @@ macro_rules! impl_q64 {
                 self.0.checked_shr(rhs).map(|value| Self(value))
             }
 
+            #[track_caller]
             #[inline]
             pub fn square(self) -> Self {
                 let intermediate = ($intermediate_type::from(self.0) * $intermediate_type::from(self.0)) >> 64usize;
 
-                let result = <$int_type>::try_from(intermediate).expect("square overflow");
+                let result = <$int_type>::try_from(intermediate);
+                let result = match result {
+                    Ok(result) => result,
+                    Err(_) => panic!("square overflow: {}:{}", file!(), line!()),
+                };
 
                 Self(result)
             }
@@ -185,6 +190,7 @@ macro_rules! impl_q64 {
         impl Add<$name> for $name {
             type Output = Self;
 
+            #[track_caller]
             #[inline]
             fn add(self, other: Self) -> Self {
                 Self(self.0 + other.0)
@@ -194,6 +200,7 @@ macro_rules! impl_q64 {
         impl Sub<$name> for $name {
             type Output = Self;
 
+            #[track_caller]
             #[inline]
             fn sub(self, other: Self) -> Self {
                 Self(self.0 - other.0)
@@ -203,11 +210,16 @@ macro_rules! impl_q64 {
         impl Mul<$name> for $name {
             type Output = Self;
 
+            #[track_caller]
             #[inline]
             fn mul(self, other: Self) -> Self {
                 let intermediate = ($intermediate_type::from(self.0) * $intermediate_type::from(other.0)) >> 64usize;
 
-                let result = <$int_type>::try_from(intermediate).expect("multiplication overflow");
+                let result = <$int_type>::try_from(intermediate);
+                let result = match result {
+                    Ok(result) => result,
+                    Err(_) => panic!("multiplication overflow: {}:{}", file!(), line!()),
+                };
 
                 Self(result)
             }
@@ -216,11 +228,16 @@ macro_rules! impl_q64 {
         impl Div<$name> for $name {
             type Output = Self;
 
+            #[track_caller]
             #[inline]
             fn div(self, other: Self) -> Self {
                 let intermediate = ($intermediate_type::from(self.0) << 64usize) / $intermediate_type::from(other.0);
 
-                let result = <$int_type>::try_from(intermediate).expect("division overflow");
+                let result = <$int_type>::try_from(intermediate);
+                let result = match result {
+                    Ok(result) => result,
+                    Err(_) => panic!("division overflow: {}:{}", file!(), line!()),
+                };
 
                 Self(result)
             }
@@ -229,6 +246,7 @@ macro_rules! impl_q64 {
         impl Rem<$name> for $name {
             type Output = Self;
 
+            #[track_caller]
             #[inline]
             fn rem(self, other: Self) -> Self {
                 Self(self.0 % other.0)
@@ -236,6 +254,7 @@ macro_rules! impl_q64 {
         }
         
         impl AddAssign<$name> for $name {
+            #[track_caller]
             #[inline]
             fn add_assign(&mut self, other: Self) {
                 self.0 += other.0;
@@ -243,6 +262,7 @@ macro_rules! impl_q64 {
         }
 
         impl SubAssign<$name> for $name {
+            #[track_caller]
             #[inline]
             fn sub_assign(&mut self, other: Self) {
                 self.0 -= other.0;
@@ -250,6 +270,7 @@ macro_rules! impl_q64 {
         }
 
         impl MulAssign<$name> for $name {
+            #[track_caller]
             #[inline]
             fn mul_assign(&mut self, other: Self) {
                 *self = *self * other;
@@ -257,13 +278,15 @@ macro_rules! impl_q64 {
         }
 
         impl DivAssign<$name> for $name {
+            #[track_caller]
             #[inline]
             fn div_assign(&mut self, other: Self) {
-                *self = *self * other;
+                *self = *self / other;
             }
         }
 
         impl RemAssign<$name> for $name {
+            #[track_caller]
             #[inline]
             fn rem_assign(&mut self, other: Self) {
                 self.0 %= other.0;
@@ -273,6 +296,7 @@ macro_rules! impl_q64 {
         impl Shl<usize> for $name {
             type Output = Self;
 
+            #[track_caller]
             #[inline]
             fn shl(self, rhs: usize) -> Self {
                 Self(self.0 << rhs)
@@ -280,6 +304,7 @@ macro_rules! impl_q64 {
         }
 
         impl ShlAssign<usize> for $name {
+            #[track_caller]
             #[inline]
             fn shl_assign(&mut self, rhs: usize) {
                 self.0 <<= rhs;
@@ -289,6 +314,7 @@ macro_rules! impl_q64 {
         impl Shr<usize> for $name {
             type Output = Self;
 
+            #[track_caller]
             #[inline]
             fn shr(self, rhs: usize) -> Self {
                 Self(self.0 >> rhs)
@@ -296,6 +322,7 @@ macro_rules! impl_q64 {
         }
 
         impl ShrAssign<usize> for $name {
+            #[track_caller]
             #[inline]
             fn shr_assign(&mut self, rhs: usize) {
                 self.0 >>= rhs;
@@ -305,6 +332,7 @@ macro_rules! impl_q64 {
         impl BitAnd<$name> for $name {
             type Output = Self;
 
+            #[track_caller]
             #[inline]
             fn bitand(self, other: Self) -> Self {
                 Self(self.0 & other.0)
@@ -312,6 +340,7 @@ macro_rules! impl_q64 {
         }
 
         impl BitAndAssign<$name> for $name {
+            #[track_caller]
             #[inline]
             fn bitand_assign(&mut self, other: Self) {
                 self.0 &= other.0;
@@ -321,6 +350,7 @@ macro_rules! impl_q64 {
         impl BitOr<$name> for $name {
             type Output = Self;
 
+            #[track_caller]
             #[inline]
             fn bitor(self, other: Self) -> Self {
                 Self(self.0 | other.0)
@@ -328,6 +358,7 @@ macro_rules! impl_q64 {
         }
 
         impl BitOrAssign<$name> for $name {
+            #[track_caller]
             #[inline]
             fn bitor_assign(&mut self, other: Self) {
                 self.0 |= other.0;
@@ -337,6 +368,7 @@ macro_rules! impl_q64 {
         impl BitXor<$name> for $name {
             type Output = Self;
 
+            #[track_caller]
             #[inline]
             fn bitxor(self, other: Self) -> Self {
                 Self(self.0 ^ other.0)
@@ -344,6 +376,7 @@ macro_rules! impl_q64 {
         }
 
         impl BitXorAssign<$name> for $name {
+            #[track_caller]
             #[inline]
             fn bitxor_assign(&mut self, other: Self) {
                 self.0 ^= other.0;
