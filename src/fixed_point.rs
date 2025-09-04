@@ -563,6 +563,20 @@ fixed_point! {
 }
 __impl_signed_fixed_point_ops!(SQ64x64);
 
+impl From<Q1x63> for Q64x64 {
+    fn from(value: Q1x63) -> Self {
+        let raw = (value.into_raw() as u128) << 1;
+        Q64x64::new(raw)
+    }
+}
+
+impl From<SQ2x62> for SQ64x64 {
+    fn from(value: SQ2x62) -> Self {
+        let raw = (value.into_raw() as i128) << 2;
+        SQ64x64::new(raw)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
