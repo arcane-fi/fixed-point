@@ -1,6 +1,9 @@
+// Copyright (c) 2025, Arcane Labs
+// SPDX-License-Identifier: Apache-2.0
+
 use crate::{error::FixedPointError, integers::{I192, I256, U192, U256}, utils::extract_from_raw_bytes};
 use std::ops::*;
-use bytemuck::{Pod, Zeroable};
+//use bytemuck::{Pod, Zeroable};
 
 macro_rules! impl_q64 {
     ( $(#[$attr:meta])* $visibility:vis struct $name:ident ( $int_type:ty, $intermediate_type:ident ); ) => {
@@ -457,7 +460,7 @@ macro_rules! impl_q64 {
     };
 }
 
-impl_q64! {
+/*impl_q64! {
     /// Unsigned Q64.64 fixed-point number type, with 192-bit intermediate type
     /// 
     /// ## Fields
@@ -660,4 +663,4 @@ impl TryFrom<SQ64Large> for Q64Large {
 
         Ok(Q64Large(value.0 as u128))
     }
-}
+}*/

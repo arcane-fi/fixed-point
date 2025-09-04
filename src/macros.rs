@@ -355,6 +355,36 @@ macro_rules! construct_sint {
             }
         }
 
+        impl From<u8> for $sname {
+            fn from(value: u8) -> Self {
+                Self::from_unsigned($uname::from(value as u64))
+            }
+        }
+
+        impl From<u16> for $sname {
+            fn from(value: u16) -> Self {
+                Self::from_unsigned($uname::from(value as u64))
+            }
+        }
+
+        impl From<u32> for $sname {
+            fn from(value: u32) -> Self {
+                Self::from_unsigned($uname::from(value as u64))
+            }
+        }
+
+        impl From<u64> for $sname {
+            fn from(value: u64) -> Self {
+                Self::from_unsigned($uname::from(value as u64))
+            }
+        }
+
+        impl From<u128> for $sname {
+            fn from(value: u128) -> Self {
+                Self::from_unsigned($uname::from(value as u64))
+            }
+        }
+
         // Conversions from smaller signed types
         impl From<i8> for $sname {
             fn from(value: i8) -> Self {
@@ -425,7 +455,7 @@ macro_rules! construct_sint {
         }
 
         // Arithmetic operators
-        impl Add for $sname {
+        impl core::ops::Add for $sname {
             type Output = Self;
             fn add(self, other: Self) -> Self {
                 let (result, overflow) = self.overflowing_add(other);
@@ -434,7 +464,7 @@ macro_rules! construct_sint {
             }
         }
 
-        impl Sub for $sname {
+        impl core::ops::Sub for $sname {
             type Output = Self;
             fn sub(self, other: Self) -> Self {
                 let (result, overflow) = self.overflowing_sub(other);
@@ -443,7 +473,7 @@ macro_rules! construct_sint {
             }
         }
 
-        impl Mul for $sname {
+        impl core::ops::Mul for $sname {
             type Output = Self;
             fn mul(self, other: Self) -> Self {
                 let (result, overflow) = self.overflowing_mul(other);
@@ -452,7 +482,7 @@ macro_rules! construct_sint {
             }
         }
 
-        impl Div for $sname {
+        impl core::ops::Div for $sname {
             type Output = Self;
 
             #[inline]
@@ -464,7 +494,7 @@ macro_rules! construct_sint {
             }
         }
 
-        impl Neg for $sname {
+        impl core::ops::Neg for $sname {
             type Output = Self;
             fn neg(self) -> Self {
                 let (result, overflow) = self.overflowing_neg();
@@ -538,6 +568,107 @@ macro_rules! construct_sint {
                     (false, false) => self.0.cmp(&other.0), // both positive: compare unsigned
                     (true, true) => other.0.cmp(&self.0),   // both negative: reverse unsigned comparison
                 }
+            }
+        }
+
+        impl core::ops::BitAnd<$sname> for $sname {
+            type Output = Self;
+
+            #[inline]
+            fn bitand(self, rhs: Self) -> Self {
+                Self(self.0 & rhs.0)
+            }
+        }
+
+        impl core::ops::BitOr<$sname> for $sname {
+            type Output = Self;
+
+            #[inline]
+            fn bitor(self, rhs: Self) -> Self {
+                Self(self.0 | rhs.0)
+            }
+        }
+
+        impl core::ops::BitXor<$sname> for $sname {
+            type Output = Self;
+
+            #[inline]
+            fn bitxor(self, rhs: Self) -> Self {
+                Self(self.0 ^ rhs.0)
+            }
+        }
+
+        impl core::ops::Not for $sname {
+            type Output = Self;
+
+            #[inline]
+            fn not(self) -> Self {
+                Self(!self.0)
+            }
+        }
+
+        impl core::ops::BitAndAssign<$sname> for $sname {
+            #[inline]
+            fn bitand_assign(&mut self, rhs: Self) {
+                self.0 &= rhs.0;
+            }
+        }
+
+        impl core::ops::BitOrAssign<$sname> for $sname {
+            #[inline]
+            fn bitor_assign(&mut self, rhs: Self) {
+                self.0 |= rhs.0;
+            }
+        }
+
+        impl core::ops::BitXorAssign<$sname> for $sname {
+            #[inline]
+            fn bitxor_assign(&mut self, rhs: Self) {
+                self.0 ^= rhs.0;
+            }
+        }
+
+        impl core::ops::AddAssign<$sname> for $sname {
+            #[inline]
+            fn add_assign(&mut self, rhs: Self) {
+                self.0 += rhs.0;
+            }
+        }
+
+        impl core::ops::SubAssign<$sname> for $sname {
+            #[inline]
+            fn sub_assign(&mut self, rhs: Self) {
+                self.0 -= rhs.0;
+            }
+        }
+
+        impl core::ops::MulAssign<$sname> for $sname {
+            #[inline]
+            fn mul_assign(&mut self, rhs: Self) {
+                self.0 *= rhs.0;
+            }
+        }
+
+        impl core::ops::DivAssign<$sname> for $sname {
+            #[inline]
+            fn div_assign(&mut self, rhs: Self) {
+                self.0 /= rhs.0;
+            }
+        }
+
+        impl core::ops::Rem<$sname> for $sname {
+            type Output = Self;
+
+            #[inline]
+            fn rem(self, rhs: Self) -> Self {
+                Self(self.0 % rhs.0)
+            }
+        }
+
+        impl core::ops::RemAssign<$sname> for $sname {
+            #[inline]
+            fn rem_assign(&mut self, rhs: Self) {
+                self.0 %= rhs.0;
             }
         }
 

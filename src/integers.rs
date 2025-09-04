@@ -1,7 +1,7 @@
 
 use crate::{construct_sint, error::FixedPointError};
 use ::uint::construct_uint;
-use std::{fmt, ops::*};
+use std::fmt;
 
 // these have scuffed doc comments because the macro codegens the beginning of them
 construct_uint! {
@@ -184,6 +184,41 @@ impl TryFrom<I192> for u128 {
         let U192(ref a) = v.to_unsigned();
         if a[2] != 0 { return Err(FixedPointError::IntegerConversionError); }
         Ok(((a[1] as u128) << 64) | (a[0] as u128))
+    }
+}
+
+impl TryFrom<I256> for u64 {
+    type Error = FixedPointError;
+    
+    fn try_from(v: I256) -> Result<Self, Self::Error> {
+        if v.is_negative() { return Err(FixedPointError::IntegerConversionError); }
+        let U256(ref a) = v.to_unsigned();
+        if a[3] != 0 || a[2] != 0 || a[1] != 0 { return Err(FixedPointError::IntegerConversionError); }
+        Ok(a[0])
+    }
+}
+
+impl TryFrom<I256> for i64 {
+    type Error = FixedPointError;
+
+    fn try_from(v: I256) -> Result<Self, Self::Error> {
+        let neg = v.is_negative();
+        let U256(ref a) = v.to_unsigned();
+
+        if !neg {
+            // non-negative must have all bits >=64 clear and bit 63 clear
+            if a[3] != 0 || a[2] != 0 || a[1] != 0 || (a[0] >> 63) != 0 {
+                return Err(FixedPointError::IntegerConversionError);
+            }
+        } else {
+            // negative must be proper sign extension: bits 64..255 all ones
+            // and bit 63 set (>= i64::MIN)
+            if a[3] != u64::MAX || a[2] != u64::MAX || a[1] != u64::MAX || (a[0] >> 63) == 0 {
+                return Err(FixedPointError::IntegerConversionError);
+            }
+        }
+
+        Ok(a[0] as i64)
     }
 }
 
