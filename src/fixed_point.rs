@@ -6,7 +6,7 @@ use crate::{error::FixedPointError, integers::{I256, U256}};
 /// Usage example:
 /// 
 /// fixed_point! {
-///     pub struct Q1p63(u64, u128, 63, false); // unsigned Q1.63
+///     pub struct Q1x63(u64, u128, 63, false); // unsigned Q1.63
 /// }
 #[macro_export]
 macro_rules! fixed_point {
@@ -564,6 +564,7 @@ fixed_point! {
 __impl_signed_fixed_point_ops!(SQ64x64);
 
 impl From<Q1x63> for Q64x64 {
+    #[inline]
     fn from(value: Q1x63) -> Self {
         let raw = (value.into_raw() as u128) << 1;
         Q64x64::new(raw)
@@ -571,9 +572,32 @@ impl From<Q1x63> for Q64x64 {
 }
 
 impl From<SQ2x62> for SQ64x64 {
+    #[inline]
     fn from(value: SQ2x62) -> Self {
         let raw = (value.into_raw() as i128) << 2;
         SQ64x64::new(raw)
+    }
+}
+
+impl TryFrom<Q64x64> for Q1x63 {
+    type Error = FixedPointError;
+    
+    #[inline]
+    fn try_from(value: Q64x64) -> Result<Self, Self::Error> {
+        // shr 1 to convert to 63 frac bits
+        let raw: u64 = (value.into_raw() >> 1).try_into().map_err(|_| FixedPointError::IntegerConversionError)?;
+        Ok(Q1x63::new(raw))
+    }
+}
+
+impl TryFrom<SQ64x64> for SQ2x62 {
+    type Error = FixedPointError;
+    
+    #[inline]
+    fn try_from(value: SQ64x64) -> Result<Self, Self::Error> {
+        // shr 2 to convert to 62 frac bits
+        let raw: i64 = (value.into_raw() >> 2).try_into().map_err(|_| FixedPointError::IntegerConversionError)?;
+        Ok(SQ2x62::new(raw))
     }
 }
 
