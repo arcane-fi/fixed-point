@@ -601,6 +601,25 @@ impl TryFrom<SQ64x64> for SQ2x62 {
     }
 }
 
+impl TryFrom<SQ64x64> for SQ0x63 {
+    type Error = FixedPointError;
+
+    #[inline]
+    fn try_from(value: SQ64x64) -> Result<Self, Self::Error> {
+        // shr 1 to convert to 63 frac bits
+        let raw: i64 = (value.into_raw() >> 1).try_into().map_err(|_| FixedPointError::IntegerConversionError)?;
+        Ok(SQ0x63::new(raw))
+    }
+}
+
+impl From<SQ0x63> for SQ64x64 {
+    #[inline]
+    fn from(value: SQ0x63) -> Self {
+        let raw = (value.into_raw() as i128) << 1;
+        SQ64x64::new(raw)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
