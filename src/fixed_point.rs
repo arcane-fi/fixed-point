@@ -656,6 +656,16 @@ impl core::convert::TryFrom<SQ64x64> for SQ0x63 {
     }
 }
 
+impl TryFrom<Q64x64> for SQ64x64 {
+    type Error = FixedPointError;
+
+    #[inline]
+    fn try_from(value: Q64x64) -> Result<Self, Self::Error> {
+        let raw = value.into_raw().try_into().map_err(|_| FixedPointError::IntegerConversionError)?;
+        Ok(SQ64x64::new(raw))
+    }
+}
+
 impl core::convert::From<SQ64x64> for Q64x64 {
     #[track_caller]
     #[inline]
