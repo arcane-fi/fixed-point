@@ -346,7 +346,7 @@ macro_rules! fixed_point {
                 Ok(Self(w << Self::FRAC_BITS))
             }
         }
-        impl From<u32> for $name {
+        impl core::convert::From<u32> for $name {
             #[inline] fn from(v: u32) -> Self {
                 let w: $storage = <_ as core::convert::From<u32>>::from(v);
                 Self(w << Self::FRAC_BITS)
@@ -401,7 +401,7 @@ macro_rules! fixed_point {
 }
 
 macro_rules! __impl_signed_fixed_point_ops {
-    ($name:ident) => {
+    ($name:ident, $unsigned:ty) => {
         impl core::ops::Neg for $name {
             type Output = Self;
             #[track_caller]
@@ -422,6 +422,7 @@ macro_rules! __impl_signed_fixed_point_ops {
     
         impl $name {
             #[inline] pub fn abs(self) -> Self { if self.0 < 0 { -self } else { self } }
+            #[inline] pub fn unsigned_abs(self) -> $unsigned { <$unsigned>::from(self.abs()) }
             #[inline] pub fn saturating_neg(self) -> Self { Self(self.0.saturating_neg()) }
             #[inline] pub fn wrapping_neg(self) -> Self { Self(self.0.wrapping_neg()) }
             #[inline] pub fn is_negative(&self) -> bool { self.0.is_negative() }
@@ -514,23 +515,38 @@ fixed_point! {
     /// * Range: integer = [-1, 1), fractional resolution = 2^-63 ≈ 1.0842 * 10^-19
     pub struct SQ0x63(i64, i128, 63, true);
 }
-__impl_signed_fixed_point_ops!(SQ0x63);
+__impl_signed_fixed_point_ops!(SQ0x63, Q1x63);
 
 fixed_point! {
-    /// Signed Q2.62 fixed-point numerical type
+    /// Unsigned Q2.62 fixed-point numerical type
     /// 
     /// ## Fields
     /// 
-    /// * `0` - The Q2.62 value represented as a i64
+    /// * `0` - The Q2.62 value represented as a u64
+    /// 
+    /// ## Notes
+    /// 
+    /// * Uses a u128 intermediate type for multiplication and division
+    /// * 2 integer bits, 62 fractional bits
+    /// * Range: integer = [0, 4), fractional resolution = 2^-62 ≈ 2.168 * 10^-19
+    pub struct Q2x62(u64, u128, 62, false);
+}
+
+fixed_point! {
+    /// Signed Q1.62 fixed-point numerical type
+    /// 
+    /// ## Fields
+    /// 
+    /// * `0` - The Signed Q1.62 value represented as a i64
     /// 
     /// ## Notes
     /// 
     /// * Uses a i128 intermediate type for multiplication and division
-    /// * 2 integer bits, 62 fractional bits
+    /// * (sign bit) +1 integer bits, 62 fractional bits
     /// * Range: integer = [-2, 2), fractional resolution = 2^-62 ≈ 2.168 * 10^-19
-    pub struct SQ2x62(i64, i128, 62, true);
+    pub struct SQ1x62(i64, i128, 62, true);
 }
-__impl_signed_fixed_point_ops!(SQ2x62);
+__impl_signed_fixed_point_ops!(SQ1x62, Q2x62);
 
 fixed_point! {
     /// Unsigned Q64.64 fixed-point numerical type
@@ -561,9 +577,9 @@ fixed_point! {
     /// * Range: integer = [-2^63, 2^63), fractional resolution = 2^-64 ≈ 5.421 * 10^-20
     pub struct SQ64x64(i128, I256, 64, true);
 }
-__impl_signed_fixed_point_ops!(SQ64x64);
+__impl_signed_fixed_point_ops!(SQ64x64, Q64x64);
 
-impl From<Q1x63> for Q64x64 {
+impl core::convert::From<Q1x63> for Q64x64 {
     #[inline]
     fn from(value: Q1x63) -> Self {
         let raw = (value.into_raw() as u128) << 1;
@@ -571,15 +587,43 @@ impl From<Q1x63> for Q64x64 {
     }
 }
 
-impl From<SQ2x62> for SQ64x64 {
+impl core::convert::From<Q1x63> for SQ0x63 {
+    #[track_caller]
     #[inline]
-    fn from(value: SQ2x62) -> Self {
+    fn from(value: Q1x63) -> Self {
+        let raw = value.into_raw();
+        
+        if raw > i64::MAX as u64 {
+            panic!("overflow converting Q1x63 to SQ0x63");
+        }
+
+        SQ0x63::new(raw as i64)
+    }
+}
+
+impl core::convert::From<SQ0x63> for Q1x63 {
+    #[track_caller]
+    #[inline]
+    fn from(value: SQ0x63) -> Self {
+        let raw = value.into_raw();
+
+        if raw.is_negative() {
+            panic!("can not convert negative SQ0x63 to Q1x63");
+        }
+        
+        Q1x63::new(raw as u64)
+    }
+}
+
+impl core::convert::From<SQ1x62> for SQ64x64 {
+    #[inline]
+    fn from(value: SQ1x62) -> Self {
         let raw = (value.into_raw() as i128) << 2;
         SQ64x64::new(raw)
     }
 }
 
-impl TryFrom<Q64x64> for Q1x63 {
+impl core::convert::TryFrom<Q64x64> for Q1x63 {
     type Error = FixedPointError;
     
     #[inline]
@@ -590,18 +634,18 @@ impl TryFrom<Q64x64> for Q1x63 {
     }
 }
 
-impl TryFrom<SQ64x64> for SQ2x62 {
+impl core::convert::TryFrom<SQ64x64> for SQ1x62 {
     type Error = FixedPointError;
     
     #[inline]
     fn try_from(value: SQ64x64) -> Result<Self, Self::Error> {
         // shr 2 to convert to 62 frac bits
         let raw: i64 = (value.into_raw() >> 2).try_into().map_err(|_| FixedPointError::IntegerConversionError)?;
-        Ok(SQ2x62::new(raw))
+        Ok(SQ1x62::new(raw))
     }
 }
 
-impl TryFrom<SQ64x64> for SQ0x63 {
+impl core::convert::TryFrom<SQ64x64> for SQ0x63 {
     type Error = FixedPointError;
 
     #[inline]
@@ -612,13 +656,64 @@ impl TryFrom<SQ64x64> for SQ0x63 {
     }
 }
 
-impl From<SQ0x63> for SQ64x64 {
+impl core::convert::From<SQ64x64> for Q64x64 {
+    #[track_caller]
+    #[inline]
+    fn from(value: SQ64x64) -> Self {
+        let raw = value.into_raw();
+
+        if raw.is_negative() {
+            panic!("can not convert negative SQ64x64 to Q64x64");
+        }
+
+        Q64x64::new(raw as u128)
+    }
+}
+
+impl core::convert::From<SQ1x62> for Q2x62 {
+    #[track_caller]
+    #[inline]
+    fn from(value: SQ1x62) -> Self {
+        let raw = value.into_raw();
+
+        if raw.is_negative() {
+            panic!("can not convert negative SQ1x62 to Q2x62");
+        }
+
+        Q2x62::new(raw as u64)
+    }
+}
+
+impl core::convert::From<SQ0x63> for SQ64x64 {
     #[inline]
     fn from(value: SQ0x63) -> Self {
         let raw = (value.into_raw() as i128) << 1;
         SQ64x64::new(raw)
     }
 }
+
+impl core::convert::From<u64> for Q1x63 {
+    #[inline]
+    fn from(value: u64) -> Self {
+        Q1x63::new(value << Self::FRAC_BITS)
+    }
+}
+
+impl core::convert::From<u64> for Q2x62 {
+    #[inline]
+    fn from(value: u64) -> Self {
+        Q2x62::new(value << Self::FRAC_BITS)
+    }
+}
+
+impl core::convert::From<u64> for SQ64x64 {
+    #[inline]
+    fn from(value: u64) -> Self {
+        SQ64x64::new((value as i128) << Self::FRAC_BITS)
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {
@@ -803,84 +898,84 @@ mod tests {
         let _ = half / half;
     }
 
-    // ---------- SQ2x62 (signed Q2.62) ----------
+    // ---------- SQ1x62 (signed Q2.62) ----------
 
     #[test]
-    fn sq2x62_consts_and_range() {
+    fn sq1x62_consts_and_range() {
         // Check FRAC_BITS and ONE
-        assert_eq!(SQ2x62::FRAC_BITS, 62);
-        assert_eq!(SQ2x62::ONE.into_raw(), 1i64 << 62);
+        assert_eq!(SQ1x62::FRAC_BITS, 62);
+        assert_eq!(SQ1x62::ONE.into_raw(), 1i64 << 62);
 
         // Minimum value is -2.0 (i64::MIN)
-        assert_eq!(SQ2x62::MIN.into_raw(), i64::MIN);
+        assert_eq!(SQ1x62::MIN.into_raw(), i64::MIN);
 
         // Maximum value is 2 − 2^-62 (i64::MAX)
-        assert_eq!(SQ2x62::MAX.into_raw(), i64::MAX);
+        assert_eq!(SQ1x62::MAX.into_raw(), i64::MAX);
 
         // Roundtrip via scaled u64 at 9 decimals
-        let near_two = SQ2x62::new(i64::MAX);
+        let near_two = SQ1x62::new(i64::MAX);
         let back = near_two.try_to_scaled_u64().unwrap();
         assert_eq!(back, 2_000_000_000); // RNE gives 2.000000000
     }
 
     #[test]
-    fn sq2x62_from_scaled_and_roundtrip() {
+    fn sq1x62_from_scaled_and_roundtrip() {
         // 1.500000000 -> Q2.62 -> back to 9dp
-        let a = SQ2x62::from_scaled_u64(1_500_000_000);
+        let a = SQ1x62::from_scaled_u64(1_500_000_000);
         let back = a.try_to_scaled_u64().unwrap();
         assert_eq!(back, 1_500_000_000);
 
         // From i32/i64/i128
-        let one = SQ2x62::try_from(1i32).unwrap();
+        let one = SQ1x62::try_from(1i32).unwrap();
         assert_eq!(one.into_raw(), 1i64 << 62);
-        let m1 = SQ2x62::try_from(-1i64).unwrap();
+        let m1 = SQ1x62::try_from(-1i64).unwrap();
         assert_eq!(m1.into_raw(), -(1i64 << 62));
-        let big = SQ2x62::try_from(0i128).unwrap();
+        let big = SQ1x62::try_from(0i128).unwrap();
         assert_eq!(big.into_raw(), 0);
     }
 
     #[test]
-    fn sq2x62_arith_ok_and_overflow_paths() {
+    fn sq1x62_arith_ok_and_overflow_paths() {
         // 1.5 * 0.25 = 0.375
-        let one = SQ2x62::ONE.into_raw();
+        let one = SQ1x62::ONE.into_raw();
         let half = 1i64 << 61;  // 0.5
         let quart = 1i64 << 60; // 0.25
-        let a = SQ2x62::new(one + half); // 1.5
-        let b = SQ2x62::new(quart);
+        let a = SQ1x62::new(one + half); // 1.5
+        let b = SQ1x62::new(quart);
         let c = a * b;
         let expected = (((a.into_raw() as i128) * (b.into_raw() as i128)) >> 62) as i64;
         assert_eq!(c.into_raw(), expected);
         assert_eq!(c.into_raw(), 3i64 << 59); // 0.375 * 2^62
 
         // division identity within range
-        let q = a / SQ2x62::new(one);
+        let q = a / SQ1x62::new(one);
         assert_eq!(q.into_raw(), a.into_raw());
     }
 
     #[test]
     #[should_panic(expected = "multiplication overflow")]
-    fn sq2x62_mul_overflow_panics() {
+    fn sq1x62_mul_overflow_panics() {
         // (2 - ε) * (2 - ε) ≈ 4 - … → > max representable (>=2) after >>FRAC_BITS
-        let a = SQ2x62::new(i64::MAX);
+        let a = SQ1x62::new(i64::MAX);
         let _ = a * a;
     }
 
     #[test]
     #[should_panic(expected = "division overflow")]
-    fn sq2x62_div_overflow_panics() {
+    fn sq1x62_div_overflow_panics() {
         // 1.5 / 0.75 = 2.0 → narrowing overflow in i64 domain (raw == 2<<62)
-        let a = SQ2x62::new((1i64 << 62) + (1i64 << 61)); // 1.5
-        let b = SQ2x62::new(3i64 << 60);                  // 0.75
+        let a = SQ1x62::new((1i64 << 62) + (1i64 << 61)); // 1.5
+        let b = SQ1x62::new(3i64 << 60);                  // 0.75
         let _ = a / b;
     }
 
     #[test]
-    fn sq2x62_signed_helpers() {
-        let x = SQ2x62::new(-(1i64 << 61)); // -0.5
+    fn sq1x62_signed_helpers() {
+        let x = SQ1x62::new(-(1i64 << 61)); // -0.5
         assert!(x.is_negative());
         assert_eq!(x.abs().into_raw(), 1i64 << 61);
 
-        let y = SQ2x62::new(1i64 << 60); // +0.25
+        let y = SQ1x62::new(1i64 << 60); // +0.25
         assert!(y.is_positive());
         assert_eq!((-y).into_raw(), -(1i64 << 60));
     }
@@ -1034,7 +1129,7 @@ mod tests {
         assert_eq!(format!("{}", a), "42");
 
         // Signed positive prints as positive
-        let b = SQ2x62::from_scaled_u64(123_456_789);
+        let b = SQ1x62::from_scaled_u64(123_456_789);
         assert_eq!(format!("{}", b), "123456789");
     }
 }
