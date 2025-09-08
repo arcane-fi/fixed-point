@@ -36,14 +36,9 @@ macro_rules! fixed_point {
                     panic!("FRAC_BITS must be < storage bit-width");
                 }
             
-                // wide must be >= 2 * storage (mul headroom)
-                if !(W_BITS >= S_BITS * 2) {
-                    panic!("Wide bit-width must be >= 2 * storage bit-width");
-                }
-            
-                // wide must be >= storage + frac_bits ((a<<FRAC_BITS) for div)
-                if !(W_BITS >= S_BITS + $frac_bits) {
-                    panic!("Wide bit-width must be >= storage + FRAC_BITS");
+                // wide must be >= storage (mul headroom)
+                if !(W_BITS >= S_BITS) {
+                    panic!("Wide bit-width must be >= storage bit-width");
                 }
             };
 
@@ -564,6 +559,21 @@ fixed_point! {
 }
 
 fixed_point! {
+    /// Unsigned Q64.64 fixed-point numerical type, used in places where widening to U256 is not desired
+    /// 
+    /// ## Fields
+    /// 
+    /// * `0` - The Q64.64 value represented as a u128
+    /// 
+    /// ## Notes
+    /// 
+    /// * Uses a u128 intermediate type for multiplication and division
+    /// * 64 integer bits, 64 fractional bits
+    /// * Range: integer = [0, 2^64), fractional resolution = 2^-64 ≈ 5.421 * 10^-20
+    pub struct ShortQ64x64(u128, u128, 64, false);
+}
+
+fixed_point! {
     /// Signed Q64.64 fixed-point numerical type
     /// 
     /// ## Fields
@@ -586,6 +596,21 @@ impl core::convert::From<Q1x63> for Q64x64 {
         Q64x64::new(raw)
     }
 }
+
+impl From<ShortQ64x64> for Q64x64 {
+    #[inline]
+    fn from(value: ShortQ64x64) -> Self {
+        Q64x64::new(value.into_raw())
+    }
+}
+
+impl From<Q64x64> for ShortQ64x64 {
+    #[inline]
+    fn from(value: Q64x64) -> Self {
+        ShortQ64x64::new(value.into_raw())
+    }
+}
+
 
 impl core::convert::From<Q1x63> for SQ0x63 {
     #[track_caller]
