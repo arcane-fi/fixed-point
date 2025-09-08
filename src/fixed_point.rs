@@ -24,7 +24,7 @@ macro_rules! fixed_point {
             pub const MAX: Self = Self(<$storage>::MAX);
             pub const MIN: Self = Self(<$storage>::MIN);
             pub const ZERO: Self = Self(0 as $storage);
-            pub const ONE: Self = Self(1 as $storage << Self::FRAC_BITS);
+            pub const ONE: Self = Self((1 as $storage) << Self::FRAC_BITS);
 
             // --- compile-time guards ---
             const __ASSERTS: () = {
