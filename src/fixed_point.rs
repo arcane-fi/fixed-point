@@ -574,20 +574,20 @@ fixed_point! {
 }
 
 fixed_point! {
-    /// Signed Q64.64 fixed-point numerical type
+    /// Signed Q63.64 fixed-point numerical type
     /// 
     /// ## Fields
     ///
-    /// * `0` - The Q64.64 value represented as a i128
+    /// * `0` - The Q63.64 value represented as a i128
     /// 
     /// ## Notes
     /// 
     /// * Uses a I256 intermediate type for multiplication and division
-    /// * 64 integer bits (one sign), 64 fractional bits
+    /// * sign bit, 63 integer bits, 64 fractional bits
     /// * Range: integer = [-2^63, 2^63), fractional resolution = 2^-64 ≈ 5.421 * 10^-20
-    pub struct SQ64x64(i128, I256, 64, true);
+    pub struct SQ63x64(i128, I256, 64, true);
 }
-__impl_signed_fixed_point_ops!(SQ64x64, Q64x64);
+__impl_signed_fixed_point_ops!(SQ63x64, Q64x64);
 
 fixed_point! {
     /// Unsigned Q32.96 fixed-point numerical type
@@ -663,11 +663,11 @@ impl core::convert::From<SQ0x63> for Q1x63 {
     }
 }
 
-impl core::convert::From<SQ1x62> for SQ64x64 {
+impl core::convert::From<SQ1x62> for SQ63x64 {
     #[inline]
     fn from(value: SQ1x62) -> Self {
         let raw = (value.into_raw() as i128) << 2;
-        SQ64x64::new(raw)
+        SQ63x64::new(raw)
     }
 }
 
@@ -682,46 +682,46 @@ impl core::convert::TryFrom<Q64x64> for Q1x63 {
     }
 }
 
-impl core::convert::TryFrom<SQ64x64> for SQ1x62 {
+impl core::convert::TryFrom<SQ63x64> for SQ1x62 {
     type Error = FixedPointError;
     
     #[inline]
-    fn try_from(value: SQ64x64) -> Result<Self, Self::Error> {
+    fn try_from(value: SQ63x64) -> Result<Self, Self::Error> {
         // shr 2 to convert to 62 frac bits
         let raw: i64 = (value.into_raw() >> 2).try_into().map_err(|_| FixedPointError::IntegerConversionError)?;
         Ok(SQ1x62::new(raw))
     }
 }
 
-impl core::convert::TryFrom<SQ64x64> for SQ0x63 {
+impl core::convert::TryFrom<SQ63x64> for SQ0x63 {
     type Error = FixedPointError;
 
     #[inline]
-    fn try_from(value: SQ64x64) -> Result<Self, Self::Error> {
+    fn try_from(value: SQ63x64) -> Result<Self, Self::Error> {
         // shr 1 to convert to 63 frac bits
         let raw: i64 = (value.into_raw() >> 1).try_into().map_err(|_| FixedPointError::IntegerConversionError)?;
         Ok(SQ0x63::new(raw))
     }
 }
 
-impl TryFrom<Q64x64> for SQ64x64 {
+impl TryFrom<Q64x64> for SQ63x64 {
     type Error = FixedPointError;
 
     #[inline]
     fn try_from(value: Q64x64) -> Result<Self, Self::Error> {
         let raw = value.into_raw().try_into().map_err(|_| FixedPointError::IntegerConversionError)?;
-        Ok(SQ64x64::new(raw))
+        Ok(SQ63x64::new(raw))
     }
 }
 
-impl core::convert::From<SQ64x64> for Q64x64 {
+impl core::convert::From<SQ63x64> for Q64x64 {
     #[track_caller]
     #[inline]
-    fn from(value: SQ64x64) -> Self {
+    fn from(value: SQ63x64) -> Self {
         let raw = value.into_raw();
 
         if raw.is_negative() {
-            panic!("can not convert negative SQ64x64 to Q64x64");
+            panic!("can not convert negative SQ63x64 to Q64x64");
         }
 
         Q64x64::new(raw as u128)
@@ -742,11 +742,11 @@ impl core::convert::From<SQ1x62> for Q2x62 {
     }
 }
 
-impl core::convert::From<SQ0x63> for SQ64x64 {
+impl core::convert::From<SQ0x63> for SQ63x64 {
     #[inline]
     fn from(value: SQ0x63) -> Self {
         let raw = (value.into_raw() as i128) << 1;
-        SQ64x64::new(raw)
+        SQ63x64::new(raw)
     }
 }
 
@@ -764,10 +764,10 @@ impl core::convert::From<u64> for Q2x62 {
     }
 }
 
-impl core::convert::From<u64> for SQ64x64 {
+impl core::convert::From<u64> for SQ63x64 {
     #[inline]
     fn from(value: u64) -> Self {
-        SQ64x64::new((value as i128) << Self::FRAC_BITS)
+        SQ63x64::new((value as i128) << Self::FRAC_BITS)
     }
 }
 
@@ -1109,54 +1109,54 @@ mod tests {
         assert_eq!(z.into_raw(), 1u128 << 64);
     }
 
-    // ---------- SQ64x64 (signed) ----------
+    // ---------- SQ63x64 (signed) ----------
 
     #[test]
-    fn sq64x64_consts_and_from_ints() {
-        assert_eq!(SQ64x64::FRAC_BITS, 64);
-        assert_eq!(SQ64x64::ONE.into_raw(), 1i128 << 64);
-        assert_eq!(SQ64x64::MIN.into_raw(), i128::MIN);
-        assert_eq!(SQ64x64::MAX.into_raw(), i128::MAX);
+    fn sq63x64_consts_and_from_ints() {
+        assert_eq!(SQ63x64::FRAC_BITS, 64);
+        assert_eq!(SQ63x64::ONE.into_raw(), 1i128 << 64);
+        assert_eq!(SQ63x64::MIN.into_raw(), i128::MIN);
+        assert_eq!(SQ63x64::MAX.into_raw(), i128::MAX);
 
         // From ints (scales by << 64)
-        assert_eq!(SQ64x64::try_from(0i32).unwrap().into_raw(), 0);
-        assert_eq!(SQ64x64::try_from(1i32).unwrap().into_raw(), 1i128 << 64);
-        assert_eq!(SQ64x64::try_from(-1i32).unwrap().into_raw(), -(1i128 << 64));
-        assert_eq!(SQ64x64::try_from(5i64).unwrap().into_raw(), 5i128 << 64);
+        assert_eq!(SQ63x64::try_from(0i32).unwrap().into_raw(), 0);
+        assert_eq!(SQ63x64::try_from(1i32).unwrap().into_raw(), 1i128 << 64);
+        assert_eq!(SQ63x64::try_from(-1i32).unwrap().into_raw(), -(1i128 << 64));
+        assert_eq!(SQ63x64::try_from(5i64).unwrap().into_raw(), 5i128 << 64);
     }
 
     #[test]
-    fn sq64x64_roundtrip_scaled() {
+    fn sq63x64_roundtrip_scaled() {
         // 1.500000000 -> Q64.64 -> back to 9dp
-        let a = SQ64x64::from_scaled_u64(1_500_000_000);
+        let a = SQ63x64::from_scaled_u64(1_500_000_000);
         let back = a.try_to_scaled_u64().unwrap();
         assert_eq!(back, 1_500_000_000);
 
         // -0.25 → scaled_u64 is an error (negative to u64)
-        let neg_quarter = SQ64x64::new(-(1i128 << 62));
+        let neg_quarter = SQ63x64::new(-(1i128 << 62));
         assert!(neg_quarter.try_to_scaled_u64().is_err());
     }
 
     #[test]
-    fn sq64x64_arith_and_sign_helpers() {
+    fn sq63x64_arith_and_sign_helpers() {
         // 1.5 * 0.25 = 0.375
-        let one   = SQ64x64::ONE.into_raw();
+        let one   = SQ63x64::ONE.into_raw();
         let half  = 1i128 << 63;
         let quart = 1i128 << 62;
 
-        let a = SQ64x64::new(one + half);
-        let b = SQ64x64::new(quart);
+        let a = SQ63x64::new(one + half);
+        let b = SQ63x64::new(quart);
         let c = a * b;
         let expected = ((I256::from(a.into_raw()) * I256::from(b.into_raw())) >> 64usize).try_into().unwrap();
         assert_eq!(c.into_raw(), expected);
         assert_eq!(c.into_raw(), 3i128 << 61);
 
         // division identity
-        let q = a / SQ64x64::new(one);
+        let q = a / SQ63x64::new(one);
         assert_eq!(q.into_raw(), a.into_raw());
 
         // signed helpers
-        let neg = SQ64x64::new(-(1i128 << 60));
+        let neg = SQ63x64::new(-(1i128 << 60));
         assert!(neg.is_negative());
         assert_eq!(neg.abs().into_raw(), 1i128 << 60);
         assert_eq!((-neg).into_raw(), 1i128 << 60);
@@ -1164,16 +1164,16 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "unary negation overflow")]
-    fn sq64x64_neg_overflow_panics() {
+    fn sq63x64_neg_overflow_panics() {
         // -MIN overflows
-        let _ = -SQ64x64::MIN;
+        let _ = -SQ63x64::MIN;
     }
 
     #[test]
-    fn sq64x64_div_exact_two_ok() {
+    fn sq63x64_div_exact_two_ok() {
         // 1.5 / 0.75 = 2.0 (representable for i128 storage)
-        let a = SQ64x64::new((1i128 << 64) + (1i128 << 63)); // 1.5
-        let b = SQ64x64::new(3i128 << 62);                   // 0.75
+        let a = SQ63x64::new((1i128 << 64) + (1i128 << 63)); // 1.5
+        let b = SQ63x64::new(3i128 << 62);                   // 0.75
         let q = a / b;
         assert_eq!(q.into_raw(), 2i128 << 64);
     }
