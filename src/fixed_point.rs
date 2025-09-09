@@ -589,6 +589,29 @@ fixed_point! {
 }
 __impl_signed_fixed_point_ops!(SQ64x64, Q64x64);
 
+fixed_point! {
+    /// Unsigned Q32.96 fixed-point numerical type
+    /// 
+    /// ## Fields
+    /// 
+    /// * `0` - The Q32.96 value represented as a u128
+    /// 
+    /// ## Notes
+    /// 
+    /// * Uses U256 intermediate type for multiplication and division
+    /// * 32 integer bits, 96 fractional bits
+    /// * Range: integer = [0, 2^32), fractional resolution = 2^-96 ≈ 1.262 * 10^-29
+    pub struct Q32x96(u128, U256, 96, false);
+}
+
+impl core::convert::From<Q32x96> for Q64x64 {
+    #[inline]
+    fn from(value: Q32x96) -> Self {
+        let raw = value.into_raw() >> 32; // trim from 96 to 64 frac bits
+        Q64x64::new(raw)
+    }
+}
+
 impl core::convert::From<Q1x63> for Q64x64 {
     #[inline]
     fn from(value: Q1x63) -> Self {
