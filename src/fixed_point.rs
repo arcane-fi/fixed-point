@@ -12,7 +12,7 @@ use crate::{error::FixedPointError, integers::{I256, U256}};
 macro_rules! fixed_point {
     (
         $(#[$attr:meta])*
-        $vis:vis struct $name:ident ( $storage:ty, $wide:ty, $frac_bits:expr, $signed:tt );
+        $vis:vis struct $name:tt ( $storage:tt, $wide:ty, $frac_bits:expr, $signed:tt );
     ) => {
         #[repr(transparent)]
         $(#[$attr])*
@@ -334,39 +334,13 @@ macro_rules! fixed_point {
             fn shr_assign(&mut self, shift: u32) { self.0 >>= shift; }
         }
 
-        impl core::convert::TryFrom<i32> for $name {
-            type Error = FixedPointError;
-            #[inline] fn try_from(v: i32) -> Result<Self, Self::Error> {
-                let w: $storage = <_ as core::convert::TryFrom<i32>>::try_from(v).map_err(|_| FixedPointError::IntegerConversionError)?;
-                Ok(Self(w << Self::FRAC_BITS))
-            }
-        }
-        impl core::convert::From<u32> for $name {
-            #[inline] fn from(v: u32) -> Self {
-                let w: $storage = <_ as core::convert::From<u32>>::from(v);
-                Self(w << Self::FRAC_BITS)
-            }
-        }
-        impl core::convert::TryFrom<i64> for $name {
-            type Error = FixedPointError;
-            #[inline] fn try_from(v: i64) -> Result<Self, Self::Error> {
-                let w: $storage = <_ as core::convert::TryFrom<i64>>::try_from(v).map_err(|_| FixedPointError::IntegerConversionError)?;
-                Ok(Self(w << Self::FRAC_BITS))
-            }
-        }
-        impl core::convert::TryFrom<i128> for $name {
-            type Error = FixedPointError;
-            #[inline] fn try_from(v: i128) -> Result<Self, Self::Error> {
-                let w: $storage = <_ as core::convert::TryFrom<i128>>::try_from(v).map_err(|_| FixedPointError::IntegerConversionError)?;
-                Ok(Self(w << Self::FRAC_BITS))
-            }
-        }
-
         impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{}", self.try_to_scaled_u64().map_err(|_| std::fmt::Error)?)
             }
         }
+
+        $crate::fixed_point::__private::__impl_fixed_point_from_base_int!($name, $storage, $signed);
 
         // Optional: bytemuck
         #[cfg(feature = "bytemuck")]
@@ -478,7 +452,359 @@ mod __private {
         };
     }
 
+    macro_rules! __impl_fixed_point_from_base_int {
+        // types where the base integer is i64
+        ($name:ident, i64, true) => {
+            impl core::convert::From<i64> for $name {
+                #[inline]
+                fn from(v: i64) -> Self {
+                    Self(v << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<i32> for $name {
+                #[inline]
+                fn from(v: i32) -> Self {
+                    Self((v as i64) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<i16> for $name {
+                #[inline]
+                fn from(v: i16) -> Self {
+                    Self((v as i64) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<i8> for $name {
+                #[inline]
+                fn from(v: i8) -> Self {
+                    Self((v as i64) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<u32> for $name {
+                #[inline]
+                fn from(v: u32) -> Self {
+                    Self((v as i64) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<u16> for $name {
+                #[inline]
+                fn from(v: u16) -> Self {
+                    Self((v as i64) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<u8> for $name {
+                #[inline]
+                fn from(v: u8) -> Self {
+                    Self((v as i64) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::TryFrom<i128> for $name {
+                type Error = FixedPointError;
+
+                #[inline]
+                fn try_from(v: i128) -> Result<Self, Self::Error> {
+                    let short: i64 = <_ as core::convert::TryFrom<i128>>::try_from(v)
+                        .map_err(|_| FixedPointError::IntegerConversionError)?;
+                    Ok(Self(short << Self::FRAC_BITS))
+                }
+            }
+
+            impl core::convert::TryFrom<u128> for $name {
+                type Error = FixedPointError;
+
+                #[inline]
+                fn try_from(v: u128) -> Result<Self, Self::Error> {
+                    let short: i64 = <_ as core::convert::TryFrom<u128>>::try_from(v)
+                        .map_err(|_| FixedPointError::IntegerConversionError)?;
+                    Ok(Self(short << Self::FRAC_BITS))
+                }
+            }
+
+            impl core::convert::TryFrom<u64> for $name {
+                type Error = FixedPointError;
+
+                #[inline]
+                fn try_from(v: u64) -> Result<Self, Self::Error> {
+                    let short: i64 = <_ as core::convert::TryFrom<u64>>::try_from(v)
+                        .map_err(|_| FixedPointError::IntegerConversionError)?;
+                    Ok(Self(short << Self::FRAC_BITS))
+                }
+            }
+        };
+        // for types where the base integer is u64
+        ($name:ident, u64, false) => {
+            impl core::convert::From<u64> for $name {
+                #[inline]
+                fn from(v: u64) -> Self {
+                    Self(v << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<u32> for $name {
+                #[inline]
+                fn from(v: u32) -> Self {
+                    Self((v as u64) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<u16> for $name {
+                #[inline]
+                fn from(v: u16) -> Self {
+                    Self((v as u64) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<u8> for $name {
+                #[inline]
+                fn from(v: u8) -> Self {
+                    Self((v as u64) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::TryFrom<u128> for $name {
+                type Error = FixedPointError;
+
+                #[inline]
+                fn try_from(v: u128) -> Result<Self, Self::Error> {
+                    let short: u64 = <_ as core::convert::TryFrom<u128>>::try_from(v)
+                        .map_err(|_| FixedPointError::IntegerConversionError)?;
+                    Ok(Self(short << Self::FRAC_BITS))
+                }
+            }
+
+            impl core::convert::TryFrom<i128> for $name {
+                type Error = FixedPointError;
+
+                #[inline]
+                fn try_from(v: i128) -> Result<Self, Self::Error> {
+                    let short: u64 = <_ as core::convert::TryFrom<i128>>::try_from(v)
+                        .map_err(|_| FixedPointError::IntegerConversionError)?;
+                    Ok(Self(short << Self::FRAC_BITS))
+                }
+            }
+
+            impl core::convert::TryFrom<i64> for $name {
+                type Error = FixedPointError;
+
+                #[inline]
+                fn try_from(v: i64) -> Result<Self, Self::Error> {
+                    let unsigned: u64 = <_ as core::convert::TryFrom<i64>>::try_from(v)
+                        .map_err(|_| FixedPointError::IntegerConversionError)?;
+                    Ok(Self(unsigned << Self::FRAC_BITS))
+                }
+            }
+
+            impl core::convert::TryFrom<i32> for $name {
+                type Error = FixedPointError;
+
+                #[inline]
+                fn try_from(v: i32) -> Result<Self, Self::Error> {
+                    let unsigned: u64 = <_ as core::convert::TryFrom<i32>>::try_from(v)
+                        .map_err(|_| FixedPointError::IntegerConversionError)?;
+                    Ok(Self(unsigned << Self::FRAC_BITS))
+                }
+            }
+
+            impl core::convert::TryFrom<i16> for $name {
+                type Error = FixedPointError;
+
+                #[inline]
+                fn try_from(v: i16) -> Result<Self, Self::Error> {
+                    let unsigned: u64 = <_ as core::convert::TryFrom<i16>>::try_from(v)
+                        .map_err(|_| FixedPointError::IntegerConversionError)?;
+                    Ok(Self(unsigned << Self::FRAC_BITS))
+                }
+            }
+
+            impl core::convert::TryFrom<i8> for $name {
+                type Error = FixedPointError;
+
+                #[inline]
+                fn try_from(v: i8) -> Result<Self, Self::Error> {
+                    let unsigned: u64 = <_ as core::convert::TryFrom<i8>>::try_from(v)
+                        .map_err(|_| FixedPointError::IntegerConversionError)?;
+                    Ok(Self(unsigned << Self::FRAC_BITS))
+                }
+            }
+        };
+        // for types where the base integer is i128
+        ($name:ident, i128, true) => {
+            impl core::convert::From<i128> for $name {
+                #[inline]
+                fn from(v: i128) -> Self {
+                    Self(v << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<i64> for $name {
+                #[inline]
+                fn from(v: i64) -> Self {
+                    Self((v as i128) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<i32> for $name {
+                #[inline]
+                fn from(v: i32) -> Self {
+                    Self((v as i128) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<i16> for $name {
+                #[inline]
+                fn from(v: i16) -> Self {
+                    Self((v as i128) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<i8> for $name {
+                #[inline]
+                fn from(v: i8) -> Self {
+                    Self((v as i128) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<u64> for $name {
+                #[inline]
+                fn from(v: u64) -> Self {
+                    Self((v as i128) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<u32> for $name {
+                #[inline]
+                fn from(v: u32) -> Self {
+                    Self((v as i128) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<u16> for $name {
+                #[inline]
+                fn from(v: u16) -> Self {
+                    Self((v as i128) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<u8> for $name {
+                #[inline]
+                fn from(v: u8) -> Self {
+                    Self((v as i128) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::TryFrom<u128> for $name {
+                type Error = FixedPointError;
+
+                #[inline]
+                fn try_from(v: u128) -> Result<Self, Self::Error> {
+                    let short: i128 = <_ as core::convert::TryFrom<u128>>::try_from(v)
+                        .map_err(|_| FixedPointError::IntegerConversionError)?;
+                    Ok(Self(short << Self::FRAC_BITS))
+                }
+            }
+        };
+        // for types where base int is u128
+        ($name:ident, u128, false) => {
+            impl core::convert::From<u128> for $name {
+                #[inline]
+                fn from(v: u128) -> Self {
+                    Self(v << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<u64> for $name {
+                #[inline]
+                fn from(v: u64) -> Self {
+                    Self((v as u128) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<u32> for $name {
+                #[inline]
+                fn from(v: u32) -> Self {
+                    Self((v as u128) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<u16> for $name {
+                #[inline]
+                fn from(v: u16) -> Self {
+                    Self((v as u128) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::From<u8> for $name {
+                #[inline]
+                fn from(v: u8) -> Self {
+                    Self((v as u128) << Self::FRAC_BITS)
+                }
+            }
+
+            impl core::convert::TryFrom<i128> for $name {
+                type Error = FixedPointError;
+
+                #[inline]
+                fn try_from(v: i128) -> Result<Self, Self::Error> {
+                    let unsigned: u128 = <_ as core::convert::TryFrom<i128>>::try_from(v)
+                        .map_err(|_| FixedPointError::IntegerConversionError)?;
+                    Ok(Self(unsigned << Self::FRAC_BITS))
+                }
+            }
+
+            impl core::convert::TryFrom<i64> for $name {
+                type Error = FixedPointError;
+
+                #[inline]
+                fn try_from(v: i64) -> Result<Self, Self::Error> {
+                    let unsigned: u128 = <_ as core::convert::TryFrom<i64>>::try_from(v)
+                        .map_err(|_| FixedPointError::IntegerConversionError)?;
+                    Ok(Self(unsigned << Self::FRAC_BITS))
+                }
+            }
+
+            impl core::convert::TryFrom<i32> for $name {
+                type Error = FixedPointError;
+
+                #[inline]
+                fn try_from(v: i32) -> Result<Self, Self::Error> {
+                    let unsigned: u128 = <_ as core::convert::TryFrom<i32>>::try_from(v)
+                        .map_err(|_| FixedPointError::IntegerConversionError)?;
+                    Ok(Self(unsigned << Self::FRAC_BITS))
+                }
+            }
+
+            impl core::convert::TryFrom<i16> for $name {
+                type Error = FixedPointError;
+
+                #[inline]
+                fn try_from(v: i16) -> Result<Self, Self::Error> {
+                    let unsigned: u128 = <_ as core::convert::TryFrom<i16>>::try_from(v)
+                        .map_err(|_| FixedPointError::IntegerConversionError)?;
+                    Ok(Self(unsigned << Self::FRAC_BITS))
+                }
+            }
+
+            impl core::convert::TryFrom<i8> for $name {
+                type Error = FixedPointError;
+
+                #[inline]
+                fn try_from(v: i8) -> Result<Self, Self::Error> {
+                    let unsigned: u128 = <_ as core::convert::TryFrom<i8>>::try_from(v)
+                        .map_err(|_| FixedPointError::IntegerConversionError)?;
+                    Ok(Self(unsigned << Self::FRAC_BITS))
+                }
+            }
+        };
+    }
+
     pub(crate) use __impl_rne_div_for_signedness;
+    pub(crate) use __impl_fixed_point_from_base_int;
 }
 
 fixed_point! {
@@ -750,29 +1076,6 @@ impl core::convert::From<SQ0x63> for SQ63x64 {
     }
 }
 
-impl core::convert::From<u64> for Q1x63 {
-    #[inline]
-    fn from(value: u64) -> Self {
-        Q1x63::new(value << Self::FRAC_BITS)
-    }
-}
-
-impl core::convert::From<u64> for Q2x62 {
-    #[inline]
-    fn from(value: u64) -> Self {
-        Q2x62::new(value << Self::FRAC_BITS)
-    }
-}
-
-impl core::convert::From<u64> for SQ63x64 {
-    #[inline]
-    fn from(value: u64) -> Self {
-        SQ63x64::new((value as i128) << Self::FRAC_BITS)
-    }
-}
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -793,6 +1096,10 @@ mod tests {
         // expected raw = ((value << 63) / 10^9)
         let expected = ((1_500_000_000u128 << 63) / 1_000_000_000u128) as u64;
         assert_eq!(a.into_raw(), expected);
+
+        let test = Q64x64::from(100u64);
+
+        println!("test: {:?}", test);
 
         let back = a.try_to_scaled_u64().unwrap();
         assert_eq!(back, 1_500_000_000);
