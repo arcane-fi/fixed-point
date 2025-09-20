@@ -958,6 +958,14 @@ fixed_point! {
     pub struct Q0x64(u64, u128, 64, false, None, false);
 }
 
+impl core::convert::From<Q0x64> for Q64x64 {
+    #[inline]
+    fn from(value: Q0x64) -> Self {
+        let raw = value.into_raw();
+        Q64x64::new(raw as u128)
+    }
+}
+
 impl core::convert::From<Q32x96> for Q64x64 {
     #[inline]
     fn from(value: Q32x96) -> Self {
