@@ -6,13 +6,13 @@ use crate::{error::FixedPointError, integers::{I256, U256}};
 /// Usage example:
 /// 
 /// fixed_point! {
-///     pub struct Q1x63(u64, u128, 63, false); // unsigned Q1.63
+///     pub struct Q1x63(u64, u128, 63, false, None); // unsigned Q1.63
 /// }
 #[macro_export]
 macro_rules! fixed_point {
     (
         $(#[$attr:meta])*
-        $vis:vis struct $name:tt ( $storage:tt, $wide:ty, $frac_bits:expr, $signed:tt );
+        $vis:vis struct $name:tt ( $storage:tt, $wide:ty, $frac_bits:expr, $signed:tt, $unsigned_type:tt, $gen_one:tt );
     ) => {
         #[repr(transparent)]
         $(#[$attr])*
@@ -24,7 +24,8 @@ macro_rules! fixed_point {
             pub const MAX: Self = Self(<$storage>::MAX);
             pub const MIN: Self = Self(<$storage>::MIN);
             pub const ZERO: Self = Self(0 as $storage);
-            pub const ONE: Self = Self((1 as $storage) << Self::FRAC_BITS);
+            
+            $crate::fixed_point::__private::__gen_one_const!($gen_one, $storage);
 
             // --- compile-time guards ---
             const __ASSERTS: () = {
@@ -36,7 +37,7 @@ macro_rules! fixed_point {
                     panic!("FRAC_BITS must be < storage bit-width");
                 }
             
-                // wide must be >= storage (mul headroom)
+                // wide must be >= storage
                 if !(W_BITS >= S_BITS) {
                     panic!("Wide bit-width must be >= storage bit-width");
                 }
@@ -100,8 +101,8 @@ macro_rules! fixed_point {
             // --- arithmetic helpers, storage domain ---
             #[inline] pub fn saturating_add(self, rhs: Self) -> Self { Self(self.0.saturating_add(rhs.0)) }
             #[inline] pub fn saturating_sub(self, rhs: Self) -> Self { Self(self.0.saturating_sub(rhs.0)) }
-            #[inline] pub fn checked_add(self, rhs: Self) -> Option<Self> { self.0.checked_add(rhs.0).map(Self) }
-            #[inline] pub fn checked_sub(self, rhs: Self) -> Option<Self> { self.0.checked_sub(rhs.0).map(Self) }
+            #[inline] pub fn checked_add(self, rhs: Self) -> Option<Self> { self.0.checked_add(rhs.0).map(|v| Self(v)) }
+            #[inline] pub fn checked_sub(self, rhs: Self) -> Option<Self> { self.0.checked_sub(rhs.0).map(|v| Self(v)) }
             #[inline] pub fn wrapping_add(self, rhs: Self) -> Self { Self(self.0.wrapping_add(rhs.0)) }
             #[inline] pub fn wrapping_sub(self, rhs: Self) -> Self { Self(self.0.wrapping_sub(rhs.0)) }
 
@@ -342,6 +343,7 @@ macro_rules! fixed_point {
             }
         }
 
+        $crate::fixed_point::__private::__impl_signed_fixed_point_ops!($name, $unsigned_type, $signed);
         $crate::fixed_point::__private::__impl_fixed_point_from_base_int!($name, $storage, $signed);
 
         // Optional: bytemuck
@@ -371,38 +373,14 @@ macro_rules! fixed_point {
     };
 }
 
-macro_rules! __impl_signed_fixed_point_ops {
-    ($name:ident, $unsigned:ty) => {
-        impl core::ops::Neg for $name {
-            type Output = Self;
-            #[track_caller]
-            #[inline]
-            fn neg(self) -> Self {
-                let val = self.0.checked_neg()
-                    .unwrap_or_else(|| panic!("unary negation overflow"));
-
-                Self(val)
-            }
-        }
-    
-        impl core::ops::Neg for &$name {
-            type Output = $name;
-            #[inline]
-            fn neg(self) -> $name { (*self).neg() }
-        }
-    
-        impl $name {
-            #[inline] pub fn abs(self) -> Self { if self.0 < 0 { -self } else { self } }
-            #[inline] pub fn unsigned_abs(self) -> $unsigned { <$unsigned>::from(self.abs()) }
-            #[inline] pub fn saturating_neg(self) -> Self { Self(self.0.saturating_neg()) }
-            #[inline] pub fn wrapping_neg(self) -> Self { Self(self.0.wrapping_neg()) }
-            #[inline] pub fn is_negative(&self) -> bool { self.0.is_negative() }
-            #[inline] pub fn is_positive(&self) -> bool { self.0.is_positive() }
-        }
-    };
-}
-
 mod __private {
+    macro_rules! __gen_one_const {
+        (true, $storage:ty) => {
+            pub const ONE: Self = Self((1 as $storage) << Self::FRAC_BITS);
+        };
+        (false, $storage:ty) => {};
+    }
+
     // Helper that expands differently for signed vs unsigned
     macro_rules! __impl_rne_div_for_signedness {
         // $signed == true -> signed version
@@ -452,6 +430,38 @@ mod __private {
         ($other:tt, $wide:ty, $fn_name:ident) => {
             compile_error!("$signed must be the literal `true` or `false`");
         };
+    }
+
+    macro_rules! __impl_signed_fixed_point_ops {
+        ($name:ident, $unsigned:ty, true) => {
+            impl core::ops::Neg for $name {
+                type Output = Self;
+                #[track_caller]
+                #[inline]
+                fn neg(self) -> Self {
+                    let val = self.0.checked_neg()
+                        .unwrap_or_else(|| panic!("unary negation overflow"));
+    
+                    Self(val)
+                }
+            }
+        
+            impl core::ops::Neg for &$name {
+                type Output = $name;
+                #[inline]
+                fn neg(self) -> $name { (*self).neg() }
+            }
+        
+            impl $name {
+                #[inline] pub fn abs(self) -> Self { if self.0 < 0 { -self } else { self } }
+                #[inline] pub fn unsigned_abs(self) -> $unsigned { <$unsigned>::from(self.abs()) }
+                #[inline] pub fn saturating_neg(self) -> Self { Self(self.0.saturating_neg()) }
+                #[inline] pub fn wrapping_neg(self) -> Self { Self(self.0.wrapping_neg()) }
+                #[inline] pub fn is_negative(&self) -> bool { self.0.is_negative() }
+                #[inline] pub fn is_positive(&self) -> bool { self.0.is_positive() }
+            }
+        };
+        ($name:ident, $unsigned:tt, false) => {};
     }
 
     macro_rules! __impl_fixed_point_from_base_int {
@@ -805,7 +815,9 @@ mod __private {
         };
     }
 
+    pub(crate) use __gen_one_const;
     pub(crate) use __impl_rne_div_for_signedness;
+    pub(crate) use __impl_signed_fixed_point_ops;
     pub(crate) use __impl_fixed_point_from_base_int;
 }
 
@@ -821,7 +833,7 @@ fixed_point! {
     /// * Uses a u128 intermediate type for multiplication and division
     /// * 1 integer bit, 63 fractional bits
     /// * Range: integer = [0, 2), fractional resolution = 2^-63 ≈ 1.0842e-19
-    pub struct Q1x63(u64, u128, 63, false);
+    pub struct Q1x63(u64, u128, 63, false, None, true);
 }
 
 fixed_point! {
@@ -836,9 +848,8 @@ fixed_point! {
     /// * Uses a i128 intermediate type for multiplication and division
     /// * 0 integer bits (sign bit), 63 fractional bits
     /// * Range: integer = [-1, 1), fractional resolution = 2^-63 ≈ 1.0842 * 10^-19
-    pub struct SQ0x63(i64, i128, 63, true);
+    pub struct SQ0x63(i64, i128, 63, true, Q1x63, false);
 }
-__impl_signed_fixed_point_ops!(SQ0x63, Q1x63);
 
 fixed_point! {
     /// Unsigned Q2.62 fixed-point numerical type
@@ -852,7 +863,7 @@ fixed_point! {
     /// * Uses a u128 intermediate type for multiplication and division
     /// * 2 integer bits, 62 fractional bits
     /// * Range: integer = [0, 4), fractional resolution = 2^-62 ≈ 2.168 * 10^-19
-    pub struct Q2x62(u64, u128, 62, false);
+    pub struct Q2x62(u64, u128, 62, false, None, true);
 }
 
 fixed_point! {
@@ -867,9 +878,8 @@ fixed_point! {
     /// * Uses a i128 intermediate type for multiplication and division
     /// * (sign bit) +1 integer bits, 62 fractional bits
     /// * Range: integer = [-2, 2), fractional resolution = 2^-62 ≈ 2.168 * 10^-19
-    pub struct SQ1x62(i64, i128, 62, true);
+    pub struct SQ1x62(i64, i128, 62, true, Q2x62, true);
 }
-__impl_signed_fixed_point_ops!(SQ1x62, Q2x62);
 
 fixed_point! {
     /// Unsigned Q64.64 fixed-point numerical type
@@ -883,7 +893,7 @@ fixed_point! {
     /// * Uses a U256 intermediate type for multiplication and division
     /// * 64 integer bits, 64 fractional bits
     /// * Range: integer = [0, 2^64), fractional resolution = 2^-64 ≈ 5.421 * 10^-20
-    pub struct Q64x64(u128, U256, 64, false);
+    pub struct Q64x64(u128, U256, 64, false, None, true);
 }
 
 fixed_point! {
@@ -898,7 +908,7 @@ fixed_point! {
     /// * Uses a u128 intermediate type for multiplication and division
     /// * 64 integer bits, 64 fractional bits
     /// * Range: integer = [0, 2^64), fractional resolution = 2^-64 ≈ 5.421 * 10^-20
-    pub struct ShortQ64x64(u128, u128, 64, false);
+    pub struct ShortQ64x64(u128, u128, 64, false, None, true);
 }
 
 fixed_point! {
@@ -913,9 +923,8 @@ fixed_point! {
     /// * Uses a I256 intermediate type for multiplication and division
     /// * sign bit, 63 integer bits, 64 fractional bits
     /// * Range: integer = [-2^63, 2^63), fractional resolution = 2^-64 ≈ 5.421 * 10^-20
-    pub struct SQ63x64(i128, I256, 64, true);
+    pub struct SQ63x64(i128, I256, 64, true, Q64x64, true);
 }
-__impl_signed_fixed_point_ops!(SQ63x64, Q64x64);
 
 fixed_point! {
     /// Unsigned Q32.96 fixed-point numerical type
@@ -929,7 +938,24 @@ fixed_point! {
     /// * Uses U256 intermediate type for multiplication and division
     /// * 32 integer bits, 96 fractional bits
     /// * Range: integer = [0, 2^32), fractional resolution = 2^-96 ≈ 1.262 * 10^-29
-    pub struct Q32x96(u128, U256, 96, false);
+    pub struct Q32x96(u128, U256, 96, false, None, true);
+}
+
+fixed_point! {
+    /// Unsigned Q0.64 fixed-point numerical type
+    /// 
+    /// ## Fields
+    /// 
+    /// * `0` - The Q0.64 value represented as a u64
+    /// 
+    /// ## Notes
+    /// 
+    /// * Uses a u128 intermediate type for multiplication and division
+    /// * 0 integer bits, 64 fractional bits
+    /// * Range: integer = [0, 1), fractional resolution = 2^-64 ≈ 5.421 * 10^-20
+    /// 
+    /// This type is pretty cursed and can't represent 1.0, the maximum value is always one ULP below 1.0
+    pub struct Q0x64(u64, u128, 64, false, None, false);
 }
 
 impl core::convert::From<Q32x96> for Q64x64 {
@@ -1194,7 +1220,6 @@ mod tests {
     #[test]
     fn sq0x63_consts_and_one() {
         assert_eq!(SQ0x63::FRAC_BITS, 63);
-        assert_eq!(SQ0x63::ONE.into_raw(), 1i64 << 63);
         assert_eq!(SQ0x63::MAX.into_raw(), i64::MAX);
         assert_eq!(SQ0x63::MIN.into_raw(), i64::MIN);
         assert_eq!(SQ0x63::ZERO.into_raw(), 0);
