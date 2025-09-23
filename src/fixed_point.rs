@@ -370,6 +370,22 @@ macro_rules! fixed_point {
                 <$storage>::deserialize(deserializer).map(Self)
             }
         }
+
+        #[cfg(feature = "anchor")]
+        impl anchor_lang::AnchorDeserialize for $name {
+            fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> Result<Self, std::io::Error> {
+                let storage = borsh::BorshDeserialize::deserialize_reader(reader)?;
+                Ok(Self(storage))
+            }
+        }
+
+        #[cfg(feature = "anchor")]
+        impl anchor_lang::AnchorSerialize for $name {
+            fn serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<(), std::io::Error> {
+                self.into_raw().serialize(writer)?;
+                Ok(())
+            }
+        }
     };
 }
 
