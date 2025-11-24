@@ -391,20 +391,20 @@ macro_rules! fixed_point {
         #[cfg(feature = "idl-build")]
         impl anchor_lang::IdlBuild for $name {
             fn insert_types(
-                types: &mut std::collections::BTreeMap<
+                _types: &mut std::collections::BTreeMap<
                     String,
                     anchor_lang::idl::types::IdlTypeDef
                 >
             ) {
-                <$storage as anchor_lang::IdlBuild>::insert_types(types)
+                // primitives don't register type defs
             }
 
             fn get_full_path() -> String {
-                <$storage as anchor_lang::IdlBuild>::get_full_path()
+                stringify!($storage).to_string()
             }
 
             fn get_type() -> anchor_lang::idl::types::IdlType {
-                <$storage as anchor_lang::IdlBuild>::get_type()
+                $crate::fixed_point::__private::__idl_type_for_storage!($storage)
             }
         }
     };
@@ -852,10 +852,27 @@ mod __private {
         };
     }
 
+    macro_rules! __idl_type_for_storage {
+        (u64)  => { anchor_lang::idl::types::IdlType::U64 };
+        (i64)  => { anchor_lang::idl::types::IdlType::I64 };
+        (u128) => { anchor_lang::idl::types::IdlType::U128 };
+        (i128) => { anchor_lang::idl::types::IdlType::I128 };
+        (u32)  => { anchor_lang::idl::types::IdlType::U32 };
+        (i32)  => { anchor_lang::idl::types::IdlType::I32 };
+        (u16)  => { anchor_lang::idl::types::IdlType::U16 };
+        (i16)  => { anchor_lang::idl::types::IdlType::I16 };
+        (u8)   => { anchor_lang::idl::types::IdlType::U8 };
+        (i8)   => { anchor_lang::idl::types::IdlType::I8 };
+        ($other:tt) => {
+            compile_error!("Unsupported storage type for Anchor IDL");
+        };
+    }
+
     pub(crate) use __gen_one_const;
     pub(crate) use __impl_rne_div_for_signedness;
     pub(crate) use __impl_signed_fixed_point_ops;
     pub(crate) use __impl_fixed_point_from_base_int;
+    pub(crate) use __idl_type_for_storage;
 }
 
 fixed_point! {
