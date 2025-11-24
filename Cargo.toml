@@ -9,6 +9,7 @@ license = "Apache-2.0"
 bytemuck = ["dep:bytemuck"]
 serde = ["dep:serde"]
 anchor = ["dep:anchor-lang", "dep:borsh"]
+idl-build = ["dep:anchor-lang", "anchor-lang/idl-build"]
 
 [dependencies]
 uint = { git = "https://github.com/arcane-fi/parity-common", package = "uint" }

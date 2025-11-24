@@ -386,6 +386,27 @@ macro_rules! fixed_point {
                 Ok(())
             }
         }
+
+        // Represent this transparent newtype as its storage primitive in IDL.
+        #[cfg(feature = "idl-build")]
+        impl anchor_lang::IdlBuild for $name {
+            fn insert_types(
+                types: &mut std::collections::BTreeMap<
+                    String,
+                    anchor_lang::idl::types::IdlTypeDef
+                >
+            ) {
+                <$storage as anchor_lang::IdlBuild>::insert_types(types)
+            }
+
+            fn get_full_path() -> String {
+                <$storage as anchor_lang::IdlBuild>::get_full_path()
+            }
+
+            fn get_type() -> anchor_lang::idl::types::IdlType {
+                <$storage as anchor_lang::IdlBuild>::get_type()
+            }
+        }
     };
 }
 
