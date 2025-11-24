@@ -390,21 +390,28 @@ macro_rules! fixed_point {
         // Represent this transparent newtype as its storage primitive in IDL.
         #[cfg(feature = "idl-build")]
         impl anchor_lang::IdlBuild for $name {
+            fn create_type() -> Option<anchor_lang::idl::types::IdlTypeDef> {
+                use anchor_lang::idl::types::*;
+
+                Some(IdlTypeDef {
+                    name: stringify!($name).to_string(),
+                    docs: vec![],
+                    ty: IdlTypeDefTy::Type {
+                        alias: $crate::fixed_point::__private::__idl_type_for_storage!($storage),
+                    },
+                    generics: vec![], // v0.31.1 expects this field
+                })
+            }
+
             fn insert_types(
-                _types: &mut std::collections::BTreeMap<
-                    String,
-                    anchor_lang::idl::types::IdlTypeDef
-                >
+                _types: &mut std::collections::BTreeMap<String, anchor_lang::idl::types::IdlTypeDef>
             ) {
-                // primitives don't register type defs
+                // no nested types to register for a primitive alias
             }
 
             fn get_full_path() -> String {
-                stringify!($storage).to_string()
-            }
-
-            fn get_type() -> anchor_lang::idl::types::IdlType {
-                $crate::fixed_point::__private::__idl_type_for_storage!($storage)
+                // used for disambiguation; stable enough
+                stringify!($name).to_string()
             }
         }
     };
