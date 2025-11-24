@@ -396,6 +396,8 @@ macro_rules! fixed_point {
                 Some(IdlTypeDef {
                     name: stringify!($name).to_string(),
                     docs: vec![],
+                    serialization: IdlSerialization::Borsh,
+                    repr: None,
                     ty: IdlTypeDefTy::Type {
                         alias: $crate::fixed_point::__private::__idl_type_for_storage!($storage),
                     },
