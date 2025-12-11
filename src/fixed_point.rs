@@ -339,7 +339,24 @@ macro_rules! fixed_point {
 
         impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{}", self.try_to_scaled_u64().map_err(|_| std::fmt::Error)?)
+                match self.try_to_scaled_u64() {
+                    Ok(scaled) => {
+                        let int_part = scaled / Self::U64_SCALE;
+                        let frac_part = scaled % Self::U64_SCALE;
+
+                        let frac_str = format!("{:09}", frac_part);
+                        let trimmed = frac_str.trim_end_matches('0');
+
+                        if trimmed.is_empty() {
+                            write!(f, "{}", int_part)
+                        } else {
+                            write!(f, "{}.{}", int_part, trimmed)
+                        }
+                    }
+                    Err(_) => {
+                        write!(f, "0x{:x}", self.0)
+                    }
+                }
             }
         }
 
@@ -881,7 +898,6 @@ mod __private {
     pub(crate) use __impl_rne_div_for_signedness;
     pub(crate) use __impl_signed_fixed_point_ops;
     pub(crate) use __impl_fixed_point_from_base_int;
-    pub(crate) use __idl_type_for_storage;
 }
 
 fixed_point! {
@@ -1019,6 +1035,35 @@ fixed_point! {
     /// 
     /// This type is pretty cursed and can't represent 1.0, the maximum value is always one ULP below 1.0
     pub struct Q0x64(u64, u128, 64, false, None, false);
+}
+
+#[macro_export]
+macro_rules! q64x64 {
+    ($num:literal / $den:literal) => {{
+        const S: u128 = 1u128 << 64;
+
+        const N: u128 = $num as u128;
+        const D: u128 = $den as u128;
+
+        const VAL: u128 = ((N * S) + (D / 2)) / D;
+
+        $crate::fixed_point::Q64x64::new(VAL)
+    }};
+    ($bp:literal bp) => {{
+        const BP: u128 = $bp as u128;
+        const S: u128 = 1u128 << 64;
+
+        const VAL: u128 = (BP * S) / 10_000;
+
+        $crate::fixed_point::Q64x64::new(VAL)
+    }};
+    ($int:tt) => {{
+        const S: u128 = 1u128 << 64;
+
+        const VAL: u128 = ($int as u128) * S;
+
+        $crate::fixed_point::Q64x64::new(VAL)
+    }};
 }
 
 impl core::convert::From<Q0x64> for Q64x64 {
