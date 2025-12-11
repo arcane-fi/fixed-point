@@ -6,7 +6,7 @@ use crate::{error::FixedPointError, integers::{I256, U256}};
 /// Usage example:
 /// 
 /// fixed_point! {
-///     pub struct Q1x63(u64, u128, 63, false, None); // unsigned Q1.63
+///     pub struct Q1x63(u64, u128, 63, false, None, true); // unsigned Q1.63
 /// }
 #[macro_export]
 macro_rules! fixed_point {
@@ -125,7 +125,7 @@ macro_rules! fixed_point {
             #[track_caller]
             #[inline]
             pub fn div_trunc(self, rhs: Self) -> Self {
-                debug_assert!(rhs.0 != <$storage as core::default::Default>::default(), "division by zero");
+                assert!(rhs.0 != <$storage as core::default::Default>::default(), "division by zero");
 
                 let num: $wide = <$wide as core::convert::From<$storage>>::from(self.0) << Self::FRAC_BITS;
                 let den: $wide = <_ as core::convert::From<$storage>>::from(rhs.0);
@@ -198,6 +198,22 @@ macro_rules! fixed_point {
             #[inline] pub fn rotate_right(self, n: u32) -> Self { Self(self.0.rotate_right(n)) }
             #[inline] pub fn checked_shl(self, rhs: u32) -> Option<Self> { self.0.checked_shl(rhs).map(Self) }
             #[inline] pub fn checked_shr(self, rhs: u32) -> Option<Self> { self.0.checked_shr(rhs).map(Self) }
+
+            #[inline]
+            pub fn mul_div(self, num: Self, den: Self) -> Self {
+                assert!(den != Self::ZERO, "mul_div: division by zero");
+
+                let a = <$wide as core::convert::From<$storage>>::from(self.0);
+                let b = <$wide as core::convert::From<$storage>>::from(num.0);
+                let c = <$wide as core::convert::From<$storage>>::from(den.0);
+
+                let num_wide: $wide = a * b;
+                let raw_wide: $wide = num_wide / c;
+
+                let raw_s: $storage = <_ as core::convert::TryFrom<$wide>>::try_from(raw_wide)
+                    .unwrap_or_else(|_| panic!("mul_div: result does not fit into {}", stringify!($name)));
+                Self(raw_s)
+            }
         }
 
         // ---- operator impls (PANIC on overflow for add/sub) ----
