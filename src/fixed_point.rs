@@ -898,6 +898,8 @@ mod __private {
     pub(crate) use __impl_rne_div_for_signedness;
     pub(crate) use __impl_signed_fixed_point_ops;
     pub(crate) use __impl_fixed_point_from_base_int;
+    #[cfg(feature = "idl-build")]
+    pub(crate) use __idl_type_for_storage;
 }
 
 fixed_point! {
