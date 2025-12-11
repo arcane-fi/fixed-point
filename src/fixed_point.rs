@@ -1068,6 +1068,8 @@ macro_rules! q64x64 {
     }};
 }
 
+pub use q64x64;
+
 impl core::convert::From<Q0x64> for Q64x64 {
     #[inline]
     fn from(value: Q0x64) -> Self {
