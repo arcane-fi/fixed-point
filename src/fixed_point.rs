@@ -25,7 +25,7 @@ macro_rules! fixed_point {
             pub const MIN: Self = Self(<$storage>::MIN);
             pub const ZERO: Self = Self(0 as $storage);
             
-            $crate::fixed_point::__private::__gen_one_const!($gen_one, $storage);
+            $crate::fixed_point::__private::__gen_one_const_and_pow!($gen_one, $storage);
 
             // --- compile-time guards ---
             const __ASSERTS: () = {
@@ -453,9 +453,25 @@ macro_rules! fixed_point {
 }
 
 mod __private {
-    macro_rules! __gen_one_const {
+    macro_rules! __gen_one_const_and_pow {
         (true, $storage:ty) => {
             pub const ONE: Self = Self((1 as $storage) << Self::FRAC_BITS);
+
+            #[inline]
+            pub fn pow(self, mut exp: u64) -> Self {
+                let mut result = Self::ONE;
+                let mut base = self;
+
+                while exp > 0 {
+                    if (exp & 1) == 1 {
+                        result *= base;
+                    }
+                    base *= base;
+                    exp >>= 1;
+                }
+
+                result
+            }
         };
         (false, $storage:ty) => {};
     }
@@ -910,7 +926,7 @@ mod __private {
         };
     }
 
-    pub(crate) use __gen_one_const;
+    pub(crate) use __gen_one_const_and_pow;
     pub(crate) use __impl_rne_div_for_signedness;
     pub(crate) use __impl_signed_fixed_point_ops;
     pub(crate) use __impl_fixed_point_from_base_int;
