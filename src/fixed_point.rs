@@ -586,7 +586,7 @@ mod __private {
         
             impl $name {
                 #[inline] pub fn abs(self) -> Self { if self.0 < 0 { -self } else { self } }
-                #[inline] pub fn unsigned_abs(self) -> $unsigned { <$unsigned>::from(self.abs()) }
+                #[inline] pub fn unsigned_abs(self) -> $unsigned { <$unsigned>::try_from(self.abs()).unwrap() }
                 #[inline] pub fn saturating_neg(self) -> Self { Self(self.0.saturating_neg()) }
                 #[inline] pub fn wrapping_neg(self) -> Self { Self(self.0.wrapping_neg()) }
                 #[inline] pub fn is_negative(&self) -> bool { self.0.is_negative() }
@@ -1077,6 +1077,21 @@ fixed_point! {
 }
 
 fixed_point! {
+    /// Signed Q63.64 fixed-point numerical type, used in places where widening to I256 is not desired
+    /// 
+    /// ## Fields
+    ///
+    /// * `0` - The Q63.64 value represented as a i128
+    /// 
+    /// ## Notes
+    /// 
+    /// * Uses a i128 intermediate type for multiplication and division
+    /// * sign bit, 63 integer bits, 64 fractional bits
+    /// * Range: integer = [-2^63, 2^63), fractional resolution = 2^-64 ≈ 5.421 * 10^-20
+    pub struct ShortSQ63x64(i128, i128, 64, true, Q64x64, true);
+}
+
+fixed_point! {
     /// Unsigned Q32.96 fixed-point numerical type
     /// 
     /// ## Fields
@@ -1138,6 +1153,42 @@ macro_rules! q64x64 {
 }
 
 pub use q64x64;
+
+impl core::convert::TryFrom<ShortSQ63x64> for Q64x64 {
+    type Error = FixedPointError;
+
+    fn try_from(value: ShortSQ63x64) -> Result<Self, Self::Error> {
+        let raw = value.into_raw();
+
+        let val = u128::try_from(raw).map_err(|_| FixedPointError::IntegerConversionError)?;
+
+        Ok(Q64x64::new(val))
+    }
+}
+
+impl core::convert::TryFrom<Q64x64> for ShortSQ63x64 {
+    type Error = FixedPointError;
+
+    fn try_from(value: Q64x64) -> Result<Self, Self::Error> {
+        let raw = value.into_raw();
+
+        let val = i128::try_from(raw).map_err(|_| FixedPointError::IntegerConversionError)?;
+
+        Ok(ShortSQ63x64::new(val))
+    }
+}
+
+impl core::convert::From<SQ63x64> for ShortSQ63x64 {
+    fn from(value: SQ63x64) -> Self {
+        Self::new(value.into_raw())
+    }
+}
+
+impl core::convert::From<ShortSQ63x64> for SQ63x64 {
+    fn from(value: ShortSQ63x64) -> Self {
+        Self::new(value.into_raw())
+    }
+}
 
 impl core::convert::From<Q0x64> for Q64x64 {
     #[inline]
