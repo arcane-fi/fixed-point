@@ -55,6 +55,30 @@ macro_rules! fixed_point {
             #[inline] pub const fn new(value: $storage) -> Self { Self(value) }
             #[inline] pub const fn into_raw(self) -> $storage { self.0 }
 
+            #[cold]
+            #[track_caller]
+            fn __fp_overflow(op: &'static str, ty: &'static str, a: &dyn core::fmt::Debug, b: &dyn core::fmt::Debug) -> ! {
+                let loc = core::panic::Location::caller();
+                panic!(
+                    "{op} overflow in {ty} at {}:{}:{} | a={a:?} b={b:?}",
+                    loc.file(),
+                    loc.line(),
+                    loc.column(),
+                );
+            }
+
+            #[cold]
+            #[track_caller]
+            fn __fp_narrow(op: &'static str, ty: &'static str, wide: &dyn core::fmt::Debug) -> ! {
+                let loc = core::panic::Location::caller();
+                panic!(
+                    "{op} narrowing overflow in {ty} at {}:{}:{} | wide={wide:?}",
+                    loc.file(),
+                    loc.line(),
+                    loc.column(),
+                );
+            }
+
             /// Convert an integer scaled by 10^decimals to fixed-point:
             ///     X * 10^decimals -> (X << FRAC_BITS) / 10^decimals
             /// xdp -> Q (RNE): q = round((value << FRAC_BITS) / 10^dec)
@@ -114,10 +138,20 @@ macro_rules! fixed_point {
             pub fn mul_trunc(self, rhs: Self) -> Self {
                 let a: $wide = <_ as core::convert::From<$storage>>::from(self.0);
                 let b: $wide = <_ as core::convert::From<$storage>>::from(rhs.0);
-                let p: $wide = a * b;
+
+                // Prevent compiler overflow panics; we control the panic payload.
+                let p: $wide = match a.checked_mul(b) {
+                    Some(v) => v,
+                    None => Self::__fp_overflow("mul", stringify!($name), &self.0, &rhs.0),
+                };
+
                 let q: $wide = p >> Self::FRAC_BITS;
-                let out: $storage = <_ as core::convert::TryFrom<$wide>>::try_from(q)
-                    .unwrap_or_else(|_| panic!("multiplication overflow"));
+
+                let out: $storage = match <_ as core::convert::TryFrom<$wide>>::try_from(q) {
+                    Ok(v) => v,
+                    Err(_) => Self::__fp_narrow("mul", stringify!($name), &q),
+                };
+
                 Self(out)
             }
 
