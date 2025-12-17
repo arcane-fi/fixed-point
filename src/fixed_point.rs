@@ -57,7 +57,7 @@ macro_rules! fixed_point {
 
             /// Convert an integer scaled by 10^decimals to fixed-point:
             ///     X * 10^decimals -> (X << FRAC_BITS) / 10^decimals
-            /// xdp → Q (RNE): q = round((value << FRAC_BITS) / 10^dec)
+            /// xdp -> Q (RNE): q = round((value << FRAC_BITS) / 10^dec)
             #[track_caller]
             #[inline]
             pub fn from_x_scaled_u64(value: u64, decimals: u32) -> Self {
@@ -78,7 +78,7 @@ macro_rules! fixed_point {
 
             /// Convenience: decimals = 9 (common on-chain scale for Solana)
             pub const U64_SCALE: u64 = 1_000_000_000;
-            /// 9dp → Q (RNE): q = round((value << FRAC_BITS) / 1e9)
+            /// 9dp -> Q (RNE): q = round((value << FRAC_BITS) / 1e9)
             #[track_caller]
             #[inline]
             pub fn from_scaled_u64(value: u64) -> Self {
@@ -151,7 +151,7 @@ macro_rules! fixed_point {
             #[inline] pub fn rem_raw(self, rhs: Self) -> Self { Self(self.0 % rhs.0) }
 
             /// (X * 10^decimals) >> FRAC_BITS -> u64
-            /// Q → xdp (RNE): q = round((raw * 10^dec) / (1<<FRAC_BITS))
+            /// Q -> xdp (RNE): q = round((raw * 10^dec) / (1<<FRAC_BITS))
             #[inline]
             pub fn try_to_x_scaled_u64(self, decimals: u32) -> Result<u64, FixedPointError> {
                 let ten_s: $storage = <$storage as core::convert::From<u8>>::from(10u8);
@@ -169,7 +169,7 @@ macro_rules! fixed_point {
                     .map_err(|_| FixedPointError::IntegerConversionError)
             }
 
-            /// Q → 9dp (RNE): q = round((raw * 1e9) / (1<<FRAC_BITS))
+            /// Q -> 9dp (RNE): q = round((raw * 1e9) / (1<<FRAC_BITS))
             #[inline]
             pub fn try_to_scaled_u64(self) -> Result<u64, FixedPointError> {
                 let mul_s: $storage = Self::storage_from_u64(Self::U64_SCALE);
@@ -243,10 +243,11 @@ macro_rules! fixed_point {
             }
         }
 
-        // Multiplication/division still go through the widened, panicking helpers you already have.
         impl core::ops::Mul<$name> for $name {
             type Output = Self;
-            #[inline] fn mul(self, rhs: Self) -> Self { self.mul_trunc(rhs) }
+            #[track_caller]
+            #[inline]
+            fn mul(self, rhs: Self) -> Self { self.mul_trunc(rhs) }
         }
         impl core::ops::Div<$name> for $name {
             type Output = Self;
@@ -280,7 +281,9 @@ macro_rules! fixed_point {
         }
 
         impl core::ops::MulAssign<$name> for $name {
-            #[inline] fn mul_assign(&mut self, rhs: Self) { *self = *self * rhs; }
+            #[track_caller]
+            #[inline]
+            fn mul_assign(&mut self, rhs: Self) { *self = *self * rhs; }
         }
         impl core::ops::DivAssign<$name> for $name {
             #[inline] fn div_assign(&mut self, rhs: Self) { *self = *self / rhs; }
