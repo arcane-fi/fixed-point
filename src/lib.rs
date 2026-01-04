@@ -1,3 +1,8 @@
+// Copyright (c) 2025, Arcane Labs
+// SPDX-License-Identifier: Apache-2.0
+
+#![cfg_attr(feature = "no-std", no_std)]
+
 pub mod error;
 pub mod fixed_point;
 pub mod integers;

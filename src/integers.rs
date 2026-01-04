@@ -1,3 +1,5 @@
+// Copyright (c) 2025, Arcane Labs
+// SPDX-License-Identifier: Apache-2.01
 
 use crate::error::FixedPointError;
 use ::uint::construct_uint;
