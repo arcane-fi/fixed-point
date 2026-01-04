@@ -3,7 +3,7 @@
 
 use crate::error::FixedPointError;
 use ::uint::construct_uint;
-use std::fmt;
+use core::fmt;
 
 /// Macro to construct signed integer types that wrap unsigned types
 #[macro_export]
