@@ -390,6 +390,7 @@ macro_rules! fixed_point {
             fn shr_assign(&mut self, shift: u32) { self.0 >>= shift; }
         }
 
+        #[cfg(not(feature = "no-std"))]
         impl core::fmt::Display for $name {
             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 match self.try_to_scaled_u64() {
