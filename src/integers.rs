@@ -74,7 +74,7 @@ macro_rules! construct_sint {
             }
 
             /// Get the absolute value as an unsigned integer
-            #[inline]
+            #[inline(always)]
             pub fn abs(&self) -> $uname {
                 if self.is_negative() {
                     self.wrapping_neg().0
@@ -84,13 +84,13 @@ macro_rules! construct_sint {
             }
 
             /// Wrapping negation using two's complement
-            #[inline]
+            #[inline(always)]
             pub fn wrapping_neg(&self) -> Self {
                 Self((!self.0).wrapping_add($uname::one()))
             }
 
             /// Checked negation
-            #[inline]
+            #[inline(always)]
             pub fn checked_neg(self) -> Option<Self> {
                 if self == Self::MIN {
                     None // -MIN would overflow
@@ -100,7 +100,7 @@ macro_rules! construct_sint {
             }
 
             /// Saturating negation
-            #[inline]
+            #[inline(always)]
             pub fn saturating_neg(self) -> Self {
                 if self == Self::MIN {
                     Self::MAX
@@ -110,26 +110,26 @@ macro_rules! construct_sint {
             }
 
             /// Overflowing negation
-            #[inline]
+            #[inline(always)]
             pub fn overflowing_neg(self) -> (Self, bool) {
                 (self.wrapping_neg(), self == Self::MIN)
             }
 
             /// Wrapping addition
-            #[inline]
+            #[inline(always)]
             pub fn wrapping_add(self, other: Self) -> Self {
                 Self(self.0.wrapping_add(other.0))
             }
 
             /// Checked addition
-            #[inline]
+            #[inline(always)]
             pub fn checked_add(self, other: Self) -> Option<Self> {
                 let (result, overflow) = self.overflowing_add(other);
                 if overflow { None } else { Some(result) }
             }
 
             /// Saturating addition
-            #[inline]
+            #[inline(always)]
             pub fn saturating_add(self, other: Self) -> Self {
                 let (result, overflow) = self.overflowing_add(other);
                 if overflow {
@@ -140,7 +140,7 @@ macro_rules! construct_sint {
             }
 
             /// Overflowing addition
-            #[inline]
+            #[inline(always)]
             pub fn overflowing_add(self, other: Self) -> (Self, bool) {
                 let (result, _) = self.0.overflowing_add(other.0);
                 let wrapped = Self(result);
@@ -155,20 +155,20 @@ macro_rules! construct_sint {
             }
 
             /// Wrapping subtraction
-            #[inline]
+            #[inline(always)]
             pub fn wrapping_sub(self, other: Self) -> Self {
                 Self(self.0.wrapping_sub(other.0))
             }
 
             /// Checked subtraction
-            #[inline]
+            #[inline(always)]
             pub fn checked_sub(self, other: Self) -> Option<Self> {
                 let (result, overflow) = self.overflowing_sub(other);
                 if overflow { None } else { Some(result) }
             }
 
             /// Saturating subtraction
-            #[inline]
+            #[inline(always)]
             pub fn saturating_sub(self, other: Self) -> Self {
                 let (result, overflow) = self.overflowing_sub(other);
                 if overflow {
@@ -179,7 +179,7 @@ macro_rules! construct_sint {
             }
 
             /// Overflowing subtraction
-            #[inline]
+            #[inline(always)]
             pub fn overflowing_sub(self, other: Self) -> (Self, bool) {
                 let (result, _) = self.0.overflowing_sub(other.0);
                 let wrapped = Self(result);
@@ -194,20 +194,20 @@ macro_rules! construct_sint {
             }
 
             /// Wrapping multiplication
-            #[inline]
+            #[inline(always)]
             pub fn wrapping_mul(self, other: Self) -> Self {
                 Self(self.0.wrapping_mul(other.0))
             }
 
             /// Checked multiplication
-            #[inline]
+            #[inline(always)]
             pub fn checked_mul(self, other: Self) -> Option<Self> {
                 let (result, overflow) = self.overflowing_mul(other);
                 if overflow { None } else { Some(result) }
             }
 
             /// Saturating multiplication
-            #[inline]
+            #[inline(always)]
             pub fn saturating_mul(self, other: Self) -> Self {
                 let (result, overflow) = self.overflowing_mul(other);
                 if overflow {
@@ -222,7 +222,7 @@ macro_rules! construct_sint {
             }
 
             /// Overflowing multiplication (simplified check)
-            #[inline]
+            #[inline(always)]
             pub fn overflowing_mul(self, other: Self) -> (Self, bool) {
                 // Convert to positive values for unsigned multiplication
                 let (abs_self, self_neg) = if self.is_negative() {
@@ -256,7 +256,7 @@ macro_rules! construct_sint {
 
             /// Wrapping division (trunc toward zero).
             /// Panics on division by zero (to mirror Rust primitives).
-            #[inline]
+            #[inline(always)]
             pub fn wrapping_div(self, other: Self) -> Self {
                 if other.is_zero() { panic!("division by zero"); }
 
@@ -275,7 +275,7 @@ macro_rules! construct_sint {
             }
 
             /// Checked division. Returns None on /0 or MIN / -1.
-            #[inline]
+            #[inline(always)]
             pub fn checked_div(self, other: Self) -> Option<Self> {
                 if other.is_zero() { return None; }
                 if self == Self::MIN && other == Self::minus_one() { return None; }
@@ -285,7 +285,7 @@ macro_rules! construct_sint {
             /// Saturating division.
             /// On /0: saturates to MIN for negative lhs, MAX for non-negative lhs.
             /// On MIN / -1: saturates to MAX.
-            #[inline]
+            #[inline(always)]
             pub fn saturating_div(self, other: Self) -> Self {
                 if other.is_zero() {
                     return if self.is_negative() { Self::MIN } else { Self::MAX };
@@ -298,7 +298,7 @@ macro_rules! construct_sint {
 
             /// Overflowing division. Returns (result, overflow_flag).
             /// Overflow only for MIN / -1. Division by zero sets overflow=true and returns 0.
-            #[inline]
+            #[inline(always)]
             pub fn overflowing_div(self, other: Self) -> (Self, bool) {
                 if other.is_zero() { return (Self::zero(), true); }
                 if self == Self::MIN && other == Self::minus_one() { return (Self::MIN, true); }
@@ -330,7 +330,7 @@ macro_rules! construct_sint {
             }
 
             /// Logical left shift by `rhs` bits
-            #[inline]
+            #[inline(always)]
             pub fn logical_shl(self, rhs: usize) -> Self {
                 if rhs == 0 { return self; }
                 if rhs >= Self::BITS as usize { panic!("shift overflow"); }
@@ -339,7 +339,7 @@ macro_rules! construct_sint {
             }
 
             /// Logical right shift by `rhs` bits (sign-extending)
-            #[inline]
+            #[inline(always)]
             pub fn logical_shr(self, rhs: usize) -> Self {
                 if rhs == 0 { return self; }
                 if rhs >= Self::BITS as usize { panic!("shift overflow"); }
@@ -492,7 +492,7 @@ macro_rules! construct_sint {
         impl core::ops::Div for $sname {
             type Output = Self;
 
-            #[inline]
+            #[inline(always)]
             fn div(self, other: Self) -> Self {
                 if other.is_zero() { panic!("division by zero"); }
                 let (res, ovf) = self.overflowing_div(other);
@@ -513,48 +513,48 @@ macro_rules! construct_sint {
         impl core::ops::Shl<usize> for $sname {
             type Output = Self;
 
-            #[inline]
+            #[inline(always)]
             fn shl(self, rhs: usize) -> Self { self.logical_shl(rhs) }
         }
 
         impl core::ops::ShlAssign<usize> for $sname {
-            #[inline]
+            #[inline(always)]
             fn shl_assign(&mut self, rhs: usize) { *self = (*self).logical_shl(rhs); }
         }
 
         impl core::ops::Shl<u32> for $sname {
             type Output = Self;
 
-            #[inline]
+            #[inline(always)]
             fn shl(self, rhs: u32) -> Self { self.logical_shl(rhs as usize) }
         }
 
         impl core::ops::ShlAssign<u32> for $sname {
-            #[inline]
+            #[inline(always)]
             fn shl_assign(&mut self, rhs: u32) { *self = (*self).logical_shl(rhs as usize); }
         }
 
         impl core::ops::Shr<usize> for $sname { 
             type Output = Self;
 
-            #[inline]
+            #[inline(always)]
             fn shr(self, rhs: usize) -> Self { self.logical_shr(rhs) }
         }
 
         impl core::ops::ShrAssign<usize> for $sname {
-            #[inline]
+            #[inline(always)]
             fn shr_assign(&mut self, rhs: usize) { *self = (*self).logical_shr(rhs); }
         }
 
         impl core::ops::Shr<u32> for $sname {
             type Output = Self;
 
-            #[inline]
+            #[inline(always)]
             fn shr(self, rhs: u32) -> Self { self.logical_shr(rhs as usize) }
         }
 
         impl core::ops::ShrAssign<u32> for $sname {
-            #[inline]
+            #[inline(always)]
             fn shr_assign(&mut self, rhs: u32) { *self = (*self).logical_shr(rhs as usize); }
         }
 
@@ -581,7 +581,7 @@ macro_rules! construct_sint {
         impl core::ops::BitAnd<$sname> for $sname {
             type Output = Self;
 
-            #[inline]
+            #[inline(always)]
             fn bitand(self, rhs: Self) -> Self {
                 Self(self.0 & rhs.0)
             }
@@ -590,7 +590,7 @@ macro_rules! construct_sint {
         impl core::ops::BitOr<$sname> for $sname {
             type Output = Self;
 
-            #[inline]
+            #[inline(always)]
             fn bitor(self, rhs: Self) -> Self {
                 Self(self.0 | rhs.0)
             }
@@ -599,7 +599,7 @@ macro_rules! construct_sint {
         impl core::ops::BitXor<$sname> for $sname {
             type Output = Self;
 
-            #[inline]
+            #[inline(always)]
             fn bitxor(self, rhs: Self) -> Self {
                 Self(self.0 ^ rhs.0)
             }
@@ -608,56 +608,56 @@ macro_rules! construct_sint {
         impl core::ops::Not for $sname {
             type Output = Self;
 
-            #[inline]
+            #[inline(always)]
             fn not(self) -> Self {
                 Self(!self.0)
             }
         }
 
         impl core::ops::BitAndAssign<$sname> for $sname {
-            #[inline]
+            #[inline(always)]
             fn bitand_assign(&mut self, rhs: Self) {
                 self.0 &= rhs.0;
             }
         }
 
         impl core::ops::BitOrAssign<$sname> for $sname {
-            #[inline]
+            #[inline(always)]
             fn bitor_assign(&mut self, rhs: Self) {
                 self.0 |= rhs.0;
             }
         }
 
         impl core::ops::BitXorAssign<$sname> for $sname {
-            #[inline]
+            #[inline(always)]
             fn bitxor_assign(&mut self, rhs: Self) {
                 self.0 ^= rhs.0;
             }
         }
 
         impl core::ops::AddAssign<$sname> for $sname {
-            #[inline]
+            #[inline(always)]
             fn add_assign(&mut self, rhs: Self) {
                 self.0 += rhs.0;
             }
         }
 
         impl core::ops::SubAssign<$sname> for $sname {
-            #[inline]
+            #[inline(always)]
             fn sub_assign(&mut self, rhs: Self) {
                 self.0 -= rhs.0;
             }
         }
 
         impl core::ops::MulAssign<$sname> for $sname {
-            #[inline]
+            #[inline(always)]
             fn mul_assign(&mut self, rhs: Self) {
                 self.0 *= rhs.0;
             }
         }
 
         impl core::ops::DivAssign<$sname> for $sname {
-            #[inline]
+            #[inline(always)]
             fn div_assign(&mut self, rhs: Self) {
                 self.0 /= rhs.0;
             }
@@ -666,14 +666,14 @@ macro_rules! construct_sint {
         impl core::ops::Rem<$sname> for $sname {
             type Output = Self;
 
-            #[inline]
+            #[inline(always)]
             fn rem(self, rhs: Self) -> Self {
                 Self(self.0 % rhs.0)
             }
         }
 
         impl core::ops::RemAssign<$sname> for $sname {
-            #[inline]
+            #[inline(always)]
             fn rem_assign(&mut self, rhs: Self) {
                 self.0 %= rhs.0;
             }
@@ -735,21 +735,21 @@ construct_uint! {
 }
 
 impl U256 {
-    #[inline]
+    #[inline(always)]
     pub fn wrapping_add(&self, other: U256) -> U256 {
         let (result, _) = self.overflowing_add(other);
 
         result
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn wrapping_sub(&self, other: U256) -> U256 {
         let (result, _) = self.overflowing_sub(other);
 
         result
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn wrapping_mul(&self, other: U256) -> U256 {
         let (result, _) = self.overflowing_mul(other);
 
@@ -758,21 +758,21 @@ impl U256 {
 }
 
 impl U192 {
-    #[inline]
+    #[inline(always)]
     pub fn wrapping_add(&self, other: U192) -> U192 {
         let (result, _) = self.overflowing_add(other);
 
         result
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn wrapping_sub(&self, other: U192) -> U192 {
         let (result, _) = self.overflowing_sub(other);
 
         result
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn wrapping_mul(&self, other: U192) -> U192 {
         let (result, _) = self.overflowing_mul(other);
 
@@ -781,21 +781,21 @@ impl U192 {
 }
 
 impl U128 {
-    #[inline]
+    #[inline(always)]
     pub fn wrapping_add(&self, other: U128) -> U128 {
         let (result, _) = self.overflowing_add(other);
 
         result
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn wrapping_sub(&self, other: U128) -> U128 {
         let (result, _) = self.overflowing_sub(other);
 
         result
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn wrapping_mul(&self, other: U128) -> U128 {
         let (result, _) = self.overflowing_mul(other);
 

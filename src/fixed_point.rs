@@ -45,15 +45,15 @@ macro_rules! fixed_point {
 
             $crate::fixed_point::__private::__impl_rne_div_for_signedness!($signed, $wide, rne_div_wide);
 
-            #[inline]
+            #[inline(always)]
             fn storage_from_u64(v: u64) -> $storage {
                 <$storage as core::convert::TryFrom<u64>>
                     ::try_from(v)
                     .unwrap_or_else(|_| panic!("u64 -> storage out of range"))
             }
 
-            #[inline] pub const fn new(value: $storage) -> Self { Self(value) }
-            #[inline] pub const fn into_raw(self) -> $storage { self.0 }
+            #[inline(always)] pub const fn new(value: $storage) -> Self { Self(value) }
+            #[inline(always)] pub const fn into_raw(self) -> $storage { self.0 }
 
             #[cold]
             #[track_caller]
@@ -83,7 +83,7 @@ macro_rules! fixed_point {
             ///     X * 10^decimals -> (X << FRAC_BITS) / 10^decimals
             /// xdp -> Q (RNE): q = round((value << FRAC_BITS) / 10^dec)
             #[track_caller]
-            #[inline]
+            #[inline(always)]
             pub fn from_x_scaled_u64(value: u64, decimals: u32) -> Self {
                 // den = 10^dec in storage, then lift
                 let ten_s: $storage = <$storage as core::convert::From<u8>>::from(10u8);
@@ -104,7 +104,7 @@ macro_rules! fixed_point {
             pub const U64_SCALE: u64 = 1_000_000_000;
             /// 9dp -> Q (RNE): q = round((value << FRAC_BITS) / 1e9)
             #[track_caller]
-            #[inline]
+            #[inline(always)]
             pub fn from_scaled_u64(value: u64) -> Self {
                 // den = 1e9 in storage, then lift
                 let den_s: $storage = Self::storage_from_u64(Self::U64_SCALE);
@@ -123,18 +123,18 @@ macro_rules! fixed_point {
             }
 
             // --- arithmetic helpers, storage domain ---
-            #[inline] pub fn saturating_add(self, rhs: Self) -> Self { Self(self.0.saturating_add(rhs.0)) }
-            #[inline] pub fn saturating_sub(self, rhs: Self) -> Self { Self(self.0.saturating_sub(rhs.0)) }
-            #[inline] pub fn checked_add(self, rhs: Self) -> Option<Self> { self.0.checked_add(rhs.0).map(|v| Self(v)) }
-            #[inline] pub fn checked_sub(self, rhs: Self) -> Option<Self> { self.0.checked_sub(rhs.0).map(|v| Self(v)) }
-            #[inline] pub fn wrapping_add(self, rhs: Self) -> Self { Self(self.0.wrapping_add(rhs.0)) }
-            #[inline] pub fn wrapping_sub(self, rhs: Self) -> Self { Self(self.0.wrapping_sub(rhs.0)) }
+            #[inline(always)] pub fn saturating_add(self, rhs: Self) -> Self { Self(self.0.saturating_add(rhs.0)) }
+            #[inline(always)] pub fn saturating_sub(self, rhs: Self) -> Self { Self(self.0.saturating_sub(rhs.0)) }
+            #[inline(always)] pub fn checked_add(self, rhs: Self) -> Option<Self> { self.0.checked_add(rhs.0).map(|v| Self(v)) }
+            #[inline(always)] pub fn checked_sub(self, rhs: Self) -> Option<Self> { self.0.checked_sub(rhs.0).map(|v| Self(v)) }
+            #[inline(always)] pub fn wrapping_add(self, rhs: Self) -> Self { Self(self.0.wrapping_add(rhs.0)) }
+            #[inline(always)] pub fn wrapping_sub(self, rhs: Self) -> Self { Self(self.0.wrapping_sub(rhs.0)) }
 
             // --- widening arithmetic, into $wide domain ---
 
             /// (a * b) >> FRAC_BITS (trunc towards zero)
             #[track_caller]
-            #[inline]
+            #[inline(always)]
             pub fn mul_trunc(self, rhs: Self) -> Self {
                 let a: $wide = <_ as core::convert::From<$storage>>::from(self.0);
                 let b: $wide = <_ as core::convert::From<$storage>>::from(rhs.0);
@@ -157,7 +157,7 @@ macro_rules! fixed_point {
 
             /// (a << FRAC_BITS) / b
             #[track_caller]
-            #[inline]
+            #[inline(always)]
             pub fn div_trunc(self, rhs: Self) -> Self {
                 assert!(rhs.0 != <$storage as core::default::Default>::default(), "division by zero");
 
@@ -171,7 +171,7 @@ macro_rules! fixed_point {
 
             /// (x * x) >> FRAC_BITS
             #[track_caller]
-            #[inline]
+            #[inline(always)]
             pub fn square(self) -> Self {
                 let a: $wide = <_ as core::convert::From<$storage>>::from(self.0);
                 let p: $wide = a * a;
@@ -182,11 +182,11 @@ macro_rules! fixed_point {
             }
 
             /// Raw storage remainder, not fixed-point modulo
-            #[inline] pub fn rem_raw(self, rhs: Self) -> Self { Self(self.0 % rhs.0) }
+            #[inline(always)] pub fn rem_raw(self, rhs: Self) -> Self { Self(self.0 % rhs.0) }
 
             /// (X * 10^decimals) >> FRAC_BITS -> u64
             /// Q -> xdp (RNE): q = round((raw * 10^dec) / (1<<FRAC_BITS))
-            #[inline]
+            #[inline(always)]
             pub fn try_to_x_scaled_u64(self, decimals: u32) -> Result<u64, FixedPointError> {
                 let ten_s: $storage = <$storage as core::convert::From<u8>>::from(10u8);
                 let mul_s: $storage = ten_s.pow(decimals);
@@ -204,7 +204,7 @@ macro_rules! fixed_point {
             }
 
             /// Q -> 9dp (RNE): q = round((raw * 1e9) / (1<<FRAC_BITS))
-            #[inline]
+            #[inline(always)]
             pub fn try_to_scaled_u64(self) -> Result<u64, FixedPointError> {
                 let mul_s: $storage = Self::storage_from_u64(Self::U64_SCALE);
                 let mul: $wide = <$wide as core::convert::From<$storage>>::from(mul_s);
@@ -220,20 +220,20 @@ macro_rules! fixed_point {
                     .map_err(|_| FixedPointError::IntegerConversionError)
             }
 
-            #[inline] pub fn leading_zeros(&self) -> u32 { self.0.leading_zeros() }
-            #[inline] pub fn leading_ones(&self) -> u32 { self.0.leading_ones() }
-            #[inline] pub fn trailing_zeros(&self) -> u32 { self.0.trailing_zeros() }
-            #[inline] pub fn trailing_ones(&self) -> u32 { self.0.trailing_ones() }
-            #[inline] pub fn count_zeros(&self) -> u32 { self.0.count_zeros() }
-            #[inline] pub fn count_ones(&self) -> u32 { self.0.count_ones() }
-            #[inline] pub fn reverse_bits(self) -> Self { Self(self.0.reverse_bits()) }
-            #[inline] pub fn swap_bytes(self) -> Self { Self(self.0.swap_bytes()) }
-            #[inline] pub fn rotate_left(self, n: u32) -> Self { Self(self.0.rotate_left(n)) }
-            #[inline] pub fn rotate_right(self, n: u32) -> Self { Self(self.0.rotate_right(n)) }
-            #[inline] pub fn checked_shl(self, rhs: u32) -> Option<Self> { self.0.checked_shl(rhs).map(Self) }
-            #[inline] pub fn checked_shr(self, rhs: u32) -> Option<Self> { self.0.checked_shr(rhs).map(Self) }
+            #[inline(always)] pub fn leading_zeros(&self) -> u32 { self.0.leading_zeros() }
+            #[inline(always)] pub fn leading_ones(&self) -> u32 { self.0.leading_ones() }
+            #[inline(always)] pub fn trailing_zeros(&self) -> u32 { self.0.trailing_zeros() }
+            #[inline(always)] pub fn trailing_ones(&self) -> u32 { self.0.trailing_ones() }
+            #[inline(always)] pub fn count_zeros(&self) -> u32 { self.0.count_zeros() }
+            #[inline(always)] pub fn count_ones(&self) -> u32 { self.0.count_ones() }
+            #[inline(always)] pub fn reverse_bits(self) -> Self { Self(self.0.reverse_bits()) }
+            #[inline(always)] pub fn swap_bytes(self) -> Self { Self(self.0.swap_bytes()) }
+            #[inline(always)] pub fn rotate_left(self, n: u32) -> Self { Self(self.0.rotate_left(n)) }
+            #[inline(always)] pub fn rotate_right(self, n: u32) -> Self { Self(self.0.rotate_right(n)) }
+            #[inline(always)] pub fn checked_shl(self, rhs: u32) -> Option<Self> { self.0.checked_shl(rhs).map(Self) }
+            #[inline(always)] pub fn checked_shr(self, rhs: u32) -> Option<Self> { self.0.checked_shr(rhs).map(Self) }
 
-            #[inline]
+            #[inline(always)]
             pub fn mul_div(self, num: Self, den: Self) -> Self {
                 assert!(den != Self::ZERO, "mul_div: division by zero");
 
@@ -255,7 +255,7 @@ macro_rules! fixed_point {
             type Output = Self;
 
             #[track_caller]
-            #[inline]
+            #[inline(always)]
             fn add(self, rhs: Self) -> Self {
                 let sum = self.0
                     .checked_add(rhs.0)
@@ -268,7 +268,7 @@ macro_rules! fixed_point {
             type Output = Self;
 
             #[track_caller]
-            #[inline]
+            #[inline(always)]
             fn sub(self, rhs: Self) -> Self {
                 let diff = self.0
                     .checked_sub(rhs.0)
@@ -280,23 +280,23 @@ macro_rules! fixed_point {
         impl core::ops::Mul<$name> for $name {
             type Output = Self;
             #[track_caller]
-            #[inline]
+            #[inline(always)]
             fn mul(self, rhs: Self) -> Self { self.mul_trunc(rhs) }
         }
         impl core::ops::Div<$name> for $name {
             type Output = Self;
-            #[inline] fn div(self, rhs: Self) -> Self { self.div_trunc(rhs) }
+            #[inline(always)] fn div(self, rhs: Self) -> Self { self.div_trunc(rhs) }
         }
         impl core::ops::Rem<$name> for $name {
             type Output = Self;
-            #[inline] fn rem(self, rhs: Self) -> Self { Self(self.0 % rhs.0) }
+            #[inline(always)] fn rem(self, rhs: Self) -> Self { Self(self.0 % rhs.0) }
         }
 
         // ---- Assign variants (also PANIC on overflow for add/sub) ----
 
         impl core::ops::AddAssign<$name> for $name {
             #[track_caller]
-            #[inline]
+            #[inline(always)]
             fn add_assign(&mut self, rhs: Self) {
                 self.0 = self.0
                     .checked_add(rhs.0)
@@ -306,7 +306,7 @@ macro_rules! fixed_point {
 
         impl core::ops::SubAssign<$name> for $name {
             #[track_caller]
-            #[inline]
+            #[inline(always)]
             fn sub_assign(&mut self, rhs: Self) {
                 self.0 = self.0
                     .checked_sub(rhs.0)
@@ -316,28 +316,28 @@ macro_rules! fixed_point {
 
         impl core::ops::MulAssign<$name> for $name {
             #[track_caller]
-            #[inline]
+            #[inline(always)]
             fn mul_assign(&mut self, rhs: Self) { *self = *self * rhs; }
         }
         impl core::ops::DivAssign<$name> for $name {
-            #[inline] fn div_assign(&mut self, rhs: Self) { *self = *self / rhs; }
+            #[inline(always)] fn div_assign(&mut self, rhs: Self) { *self = *self / rhs; }
         }
         impl core::ops::RemAssign<$name> for $name {
-            #[inline] fn rem_assign(&mut self, rhs: Self) { self.0 %= rhs.0; }
+            #[inline(always)] fn rem_assign(&mut self, rhs: Self) { self.0 %= rhs.0; }
         }
 
-        impl core::ops::BitAnd<$name> for $name { type Output = Self; #[inline] fn bitand(self, o: Self) -> Self { Self(self.0 & o.0) } }
-        impl core::ops::BitAndAssign<$name> for $name { #[inline] fn bitand_assign(&mut self, o: Self) { self.0 &= o.0; } }
-        impl core::ops::BitOr<$name>  for $name { type Output = Self; #[inline] fn bitor (self, o: Self) -> Self { Self(self.0 | o.0) } }
-        impl core::ops::BitOrAssign<$name>  for $name { #[inline] fn bitor_assign(&mut self, o: Self) { self.0 |= o.0; } }
-        impl core::ops::BitXor<$name> for $name { type Output = Self; #[inline] fn bitxor(self, o: Self) -> Self { Self(self.0 ^ o.0) } }
-        impl core::ops::BitXorAssign<$name> for $name { #[inline] fn bitxor_assign(&mut self, o: Self) { self.0 ^= o.0; } }
-        impl core::ops::Not for $name { type Output = Self; #[inline] fn not(self) -> Self { Self(!self.0) } }
+        impl core::ops::BitAnd<$name> for $name { type Output = Self; #[inline(always)] fn bitand(self, o: Self) -> Self { Self(self.0 & o.0) } }
+        impl core::ops::BitAndAssign<$name> for $name { #[inline(always)] fn bitand_assign(&mut self, o: Self) { self.0 &= o.0; } }
+        impl core::ops::BitOr<$name>  for $name { type Output = Self; #[inline(always)] fn bitor (self, o: Self) -> Self { Self(self.0 | o.0) } }
+        impl core::ops::BitOrAssign<$name>  for $name { #[inline(always)] fn bitor_assign(&mut self, o: Self) { self.0 |= o.0; } }
+        impl core::ops::BitXor<$name> for $name { type Output = Self; #[inline(always)] fn bitxor(self, o: Self) -> Self { Self(self.0 ^ o.0) } }
+        impl core::ops::BitXorAssign<$name> for $name { #[inline(always)] fn bitxor_assign(&mut self, o: Self) { self.0 ^= o.0; } }
+        impl core::ops::Not for $name { type Output = Self; #[inline(always)] fn not(self) -> Self { Self(!self.0) } }
 
         impl core::ops::Shl<usize> for $name {
             type Output = Self;
 
-            #[inline]
+            #[inline(always)]
             fn shl(self, shift: usize) -> Self {
                 Self(self.0 << shift)
             }
@@ -346,7 +346,7 @@ macro_rules! fixed_point {
         impl core::ops::Shr<usize> for $name {
             type Output = Self;
 
-            #[inline]
+            #[inline(always)]
             fn shr(self, shift: usize) -> Self {
                 Self(self.0 >> shift)
             }
@@ -355,7 +355,7 @@ macro_rules! fixed_point {
         impl core::ops::Shl<u32> for $name {
             type Output = Self;
 
-            #[inline]
+            #[inline(always)]
             fn shl(self, shift: u32) -> Self {
                 Self(self.0 << shift)
             }
@@ -364,29 +364,29 @@ macro_rules! fixed_point {
         impl core::ops::Shr<u32> for $name {
             type Output = Self;
 
-            #[inline]
+            #[inline(always)]
             fn shr(self, shift: u32) -> Self {
                 Self(self.0 >> shift)
             }
         }
 
         impl core::ops::ShlAssign<usize> for $name {
-            #[inline]
+            #[inline(always)]
             fn shl_assign(&mut self, shift: usize) { self.0 <<= shift; }
         }
 
         impl core::ops::ShrAssign<usize> for $name {
-            #[inline]
+            #[inline(always)]
             fn shr_assign(&mut self, shift: usize) { self.0 >>= shift; }
         }
 
         impl core::ops::ShlAssign<u32> for $name {
-            #[inline]
+            #[inline(always)]
             fn shl_assign(&mut self, shift: u32) { self.0 <<= shift; }
         }
 
         impl core::ops::ShrAssign<u32> for $name {
-            #[inline]
+            #[inline(always)]
             fn shr_assign(&mut self, shift: u32) { self.0 >>= shift; }
         }
 
@@ -495,7 +495,7 @@ mod __private {
         (true, $storage:ty) => {
             pub const ONE: Self = Self((1 as $storage) << Self::FRAC_BITS);
 
-            #[inline]
+            #[inline(always)]
             pub fn pow(self, mut exp: u64) -> Self {
                 let mut result = Self::ONE;
                 let mut base = self;
@@ -518,7 +518,7 @@ mod __private {
     macro_rules! __impl_rne_div_for_signedness {
         // $signed == true -> signed version
         (true, $wide:ty, $fn_name:ident) => {
-            #[inline]
+            #[inline(always)]
             fn $fn_name(num: $wide, den: $wide) -> $wide {
                 // Preconditions: den > 0
                 let q0: $wide = num / den;
@@ -546,7 +546,7 @@ mod __private {
 
         // $signed == false -> unsigned version
         (false, $wide:ty, $fn_name:ident) => {
-            #[inline]
+            #[inline(always)]
             fn $fn_name(num: $wide, den: $wide) -> $wide {
                 // Preconditions: den > 0
                 let q0: $wide = num / den;
@@ -570,7 +570,7 @@ mod __private {
             impl core::ops::Neg for $name {
                 type Output = Self;
                 #[track_caller]
-                #[inline]
+                #[inline(always)]
                 fn neg(self) -> Self {
                     let val = self.0.checked_neg()
                         .unwrap_or_else(|| panic!("unary negation overflow"));
@@ -581,17 +581,17 @@ mod __private {
         
             impl core::ops::Neg for &$name {
                 type Output = $name;
-                #[inline]
+                #[inline(always)]
                 fn neg(self) -> $name { (*self).neg() }
             }
         
             impl $name {
-                #[inline] pub fn abs(self) -> Self { if self.0 < 0 { -self } else { self } }
-                #[inline] pub fn unsigned_abs(self) -> $unsigned { <$unsigned>::try_from(self.abs()).unwrap() }
-                #[inline] pub fn saturating_neg(self) -> Self { Self(self.0.saturating_neg()) }
-                #[inline] pub fn wrapping_neg(self) -> Self { Self(self.0.wrapping_neg()) }
-                #[inline] pub fn is_negative(&self) -> bool { self.0.is_negative() }
-                #[inline] pub fn is_positive(&self) -> bool { self.0.is_positive() }
+                #[inline(always)] pub fn abs(self) -> Self { if self.0 < 0 { -self } else { self } }
+                #[inline(always)] pub fn unsigned_abs(self) -> $unsigned { <$unsigned>::try_from(self.abs()).unwrap() }
+                #[inline(always)] pub fn saturating_neg(self) -> Self { Self(self.0.saturating_neg()) }
+                #[inline(always)] pub fn wrapping_neg(self) -> Self { Self(self.0.wrapping_neg()) }
+                #[inline(always)] pub fn is_negative(&self) -> bool { self.0.is_negative() }
+                #[inline(always)] pub fn is_positive(&self) -> bool { self.0.is_positive() }
             }
         };
         ($name:ident, $unsigned:tt, false) => {};
@@ -601,49 +601,49 @@ mod __private {
         // types where the base integer is i64
         ($name:ident, i64, true) => {
             impl core::convert::From<i64> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: i64) -> Self {
                     Self(v << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<i32> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: i32) -> Self {
                     Self((v as i64) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<i16> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: i16) -> Self {
                     Self((v as i64) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<i8> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: i8) -> Self {
                     Self((v as i64) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<u32> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: u32) -> Self {
                     Self((v as i64) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<u16> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: u16) -> Self {
                     Self((v as i64) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<u8> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: u8) -> Self {
                     Self((v as i64) << Self::FRAC_BITS)
                 }
@@ -652,7 +652,7 @@ mod __private {
             impl core::convert::TryFrom<i128> for $name {
                 type Error = FixedPointError;
 
-                #[inline]
+                #[inline(always)]
                 fn try_from(v: i128) -> Result<Self, Self::Error> {
                     let short: i64 = <_ as core::convert::TryFrom<i128>>::try_from(v)
                         .map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -663,7 +663,7 @@ mod __private {
             impl core::convert::TryFrom<u128> for $name {
                 type Error = FixedPointError;
 
-                #[inline]
+                #[inline(always)]
                 fn try_from(v: u128) -> Result<Self, Self::Error> {
                     let short: i64 = <_ as core::convert::TryFrom<u128>>::try_from(v)
                         .map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -674,7 +674,7 @@ mod __private {
             impl core::convert::TryFrom<u64> for $name {
                 type Error = FixedPointError;
 
-                #[inline]
+                #[inline(always)]
                 fn try_from(v: u64) -> Result<Self, Self::Error> {
                     let short: i64 = <_ as core::convert::TryFrom<u64>>::try_from(v)
                         .map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -685,28 +685,28 @@ mod __private {
         // for types where the base integer is u64
         ($name:ident, u64, false) => {
             impl core::convert::From<u64> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: u64) -> Self {
                     Self(v << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<u32> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: u32) -> Self {
                     Self((v as u64) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<u16> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: u16) -> Self {
                     Self((v as u64) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<u8> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: u8) -> Self {
                     Self((v as u64) << Self::FRAC_BITS)
                 }
@@ -715,7 +715,7 @@ mod __private {
             impl core::convert::TryFrom<u128> for $name {
                 type Error = FixedPointError;
 
-                #[inline]
+                #[inline(always)]
                 fn try_from(v: u128) -> Result<Self, Self::Error> {
                     let short: u64 = <_ as core::convert::TryFrom<u128>>::try_from(v)
                         .map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -726,7 +726,7 @@ mod __private {
             impl core::convert::TryFrom<i128> for $name {
                 type Error = FixedPointError;
 
-                #[inline]
+                #[inline(always)]
                 fn try_from(v: i128) -> Result<Self, Self::Error> {
                     let short: u64 = <_ as core::convert::TryFrom<i128>>::try_from(v)
                         .map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -737,7 +737,7 @@ mod __private {
             impl core::convert::TryFrom<i64> for $name {
                 type Error = FixedPointError;
 
-                #[inline]
+                #[inline(always)]
                 fn try_from(v: i64) -> Result<Self, Self::Error> {
                     let unsigned: u64 = <_ as core::convert::TryFrom<i64>>::try_from(v)
                         .map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -748,7 +748,7 @@ mod __private {
             impl core::convert::TryFrom<i32> for $name {
                 type Error = FixedPointError;
 
-                #[inline]
+                #[inline(always)]
                 fn try_from(v: i32) -> Result<Self, Self::Error> {
                     let unsigned: u64 = <_ as core::convert::TryFrom<i32>>::try_from(v)
                         .map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -759,7 +759,7 @@ mod __private {
             impl core::convert::TryFrom<i16> for $name {
                 type Error = FixedPointError;
 
-                #[inline]
+                #[inline(always)]
                 fn try_from(v: i16) -> Result<Self, Self::Error> {
                     let unsigned: u64 = <_ as core::convert::TryFrom<i16>>::try_from(v)
                         .map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -770,7 +770,7 @@ mod __private {
             impl core::convert::TryFrom<i8> for $name {
                 type Error = FixedPointError;
 
-                #[inline]
+                #[inline(always)]
                 fn try_from(v: i8) -> Result<Self, Self::Error> {
                     let unsigned: u64 = <_ as core::convert::TryFrom<i8>>::try_from(v)
                         .map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -781,63 +781,63 @@ mod __private {
         // for types where the base integer is i128
         ($name:ident, i128, true) => {
             impl core::convert::From<i128> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: i128) -> Self {
                     Self(v << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<i64> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: i64) -> Self {
                     Self((v as i128) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<i32> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: i32) -> Self {
                     Self((v as i128) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<i16> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: i16) -> Self {
                     Self((v as i128) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<i8> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: i8) -> Self {
                     Self((v as i128) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<u64> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: u64) -> Self {
                     Self((v as i128) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<u32> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: u32) -> Self {
                     Self((v as i128) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<u16> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: u16) -> Self {
                     Self((v as i128) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<u8> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: u8) -> Self {
                     Self((v as i128) << Self::FRAC_BITS)
                 }
@@ -846,7 +846,7 @@ mod __private {
             impl core::convert::TryFrom<u128> for $name {
                 type Error = FixedPointError;
 
-                #[inline]
+                #[inline(always)]
                 fn try_from(v: u128) -> Result<Self, Self::Error> {
                     let short: i128 = <_ as core::convert::TryFrom<u128>>::try_from(v)
                         .map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -857,35 +857,35 @@ mod __private {
         // for types where base int is u128
         ($name:ident, u128, false) => {
             impl core::convert::From<u128> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: u128) -> Self {
                     Self(v << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<u64> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: u64) -> Self {
                     Self((v as u128) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<u32> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: u32) -> Self {
                     Self((v as u128) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<u16> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: u16) -> Self {
                     Self((v as u128) << Self::FRAC_BITS)
                 }
             }
 
             impl core::convert::From<u8> for $name {
-                #[inline]
+                #[inline(always)]
                 fn from(v: u8) -> Self {
                     Self((v as u128) << Self::FRAC_BITS)
                 }
@@ -894,7 +894,7 @@ mod __private {
             impl core::convert::TryFrom<i128> for $name {
                 type Error = FixedPointError;
 
-                #[inline]
+                #[inline(always)]
                 fn try_from(v: i128) -> Result<Self, Self::Error> {
                     let unsigned: u128 = <_ as core::convert::TryFrom<i128>>::try_from(v)
                         .map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -905,7 +905,7 @@ mod __private {
             impl core::convert::TryFrom<i64> for $name {
                 type Error = FixedPointError;
 
-                #[inline]
+                #[inline(always)]
                 fn try_from(v: i64) -> Result<Self, Self::Error> {
                     let unsigned: u128 = <_ as core::convert::TryFrom<i64>>::try_from(v)
                         .map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -916,7 +916,7 @@ mod __private {
             impl core::convert::TryFrom<i32> for $name {
                 type Error = FixedPointError;
 
-                #[inline]
+                #[inline(always)]
                 fn try_from(v: i32) -> Result<Self, Self::Error> {
                     let unsigned: u128 = <_ as core::convert::TryFrom<i32>>::try_from(v)
                         .map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -927,7 +927,7 @@ mod __private {
             impl core::convert::TryFrom<i16> for $name {
                 type Error = FixedPointError;
 
-                #[inline]
+                #[inline(always)]
                 fn try_from(v: i16) -> Result<Self, Self::Error> {
                     let unsigned: u128 = <_ as core::convert::TryFrom<i16>>::try_from(v)
                         .map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -938,7 +938,7 @@ mod __private {
             impl core::convert::TryFrom<i8> for $name {
                 type Error = FixedPointError;
 
-                #[inline]
+                #[inline(always)]
                 fn try_from(v: i8) -> Result<Self, Self::Error> {
                     let unsigned: u128 = <_ as core::convert::TryFrom<i8>>::try_from(v)
                         .map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -1192,7 +1192,7 @@ impl core::convert::From<ShortSQ63x64> for SQ63x64 {
 }
 
 impl core::convert::From<Q0x64> for Q64x64 {
-    #[inline]
+    #[inline(always)]
     fn from(value: Q0x64) -> Self {
         let raw = value.into_raw();
         Q64x64::new(raw as u128)
@@ -1200,7 +1200,7 @@ impl core::convert::From<Q0x64> for Q64x64 {
 }
 
 impl core::convert::From<Q32x96> for Q64x64 {
-    #[inline]
+    #[inline(always)]
     fn from(value: Q32x96) -> Self {
         let raw = value.into_raw() >> 32; // trim from 96 to 64 frac bits
         Q64x64::new(raw)
@@ -1208,7 +1208,7 @@ impl core::convert::From<Q32x96> for Q64x64 {
 }
 
 impl core::convert::From<Q1x63> for Q64x64 {
-    #[inline]
+    #[inline(always)]
     fn from(value: Q1x63) -> Self {
         let raw = (value.into_raw() as u128) << 1;
         Q64x64::new(raw)
@@ -1216,14 +1216,14 @@ impl core::convert::From<Q1x63> for Q64x64 {
 }
 
 impl From<ShortQ64x64> for Q64x64 {
-    #[inline]
+    #[inline(always)]
     fn from(value: ShortQ64x64) -> Self {
         Q64x64::new(value.into_raw())
     }
 }
 
 impl From<Q64x64> for ShortQ64x64 {
-    #[inline]
+    #[inline(always)]
     fn from(value: Q64x64) -> Self {
         ShortQ64x64::new(value.into_raw())
     }
@@ -1232,7 +1232,7 @@ impl From<Q64x64> for ShortQ64x64 {
 
 impl core::convert::From<Q1x63> for SQ0x63 {
     #[track_caller]
-    #[inline]
+    #[inline(always)]
     fn from(value: Q1x63) -> Self {
         let raw = value.into_raw();
         
@@ -1246,7 +1246,7 @@ impl core::convert::From<Q1x63> for SQ0x63 {
 
 impl core::convert::From<SQ0x63> for Q1x63 {
     #[track_caller]
-    #[inline]
+    #[inline(always)]
     fn from(value: SQ0x63) -> Self {
         let raw = value.into_raw();
 
@@ -1259,7 +1259,7 @@ impl core::convert::From<SQ0x63> for Q1x63 {
 }
 
 impl core::convert::From<SQ1x62> for SQ63x64 {
-    #[inline]
+    #[inline(always)]
     fn from(value: SQ1x62) -> Self {
         let raw = (value.into_raw() as i128) << 2;
         SQ63x64::new(raw)
@@ -1269,7 +1269,7 @@ impl core::convert::From<SQ1x62> for SQ63x64 {
 impl core::convert::TryFrom<Q64x64> for Q1x63 {
     type Error = FixedPointError;
     
-    #[inline]
+    #[inline(always)]
     fn try_from(value: Q64x64) -> Result<Self, Self::Error> {
         // shr 1 to convert to 63 frac bits
         let raw: u64 = (value.into_raw() >> 1).try_into().map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -1280,7 +1280,7 @@ impl core::convert::TryFrom<Q64x64> for Q1x63 {
 impl core::convert::TryFrom<SQ63x64> for SQ1x62 {
     type Error = FixedPointError;
     
-    #[inline]
+    #[inline(always)]
     fn try_from(value: SQ63x64) -> Result<Self, Self::Error> {
         // shr 2 to convert to 62 frac bits
         let raw: i64 = (value.into_raw() >> 2).try_into().map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -1291,7 +1291,7 @@ impl core::convert::TryFrom<SQ63x64> for SQ1x62 {
 impl core::convert::TryFrom<SQ63x64> for SQ0x63 {
     type Error = FixedPointError;
 
-    #[inline]
+    #[inline(always)]
     fn try_from(value: SQ63x64) -> Result<Self, Self::Error> {
         // shr 1 to convert to 63 frac bits
         let raw: i64 = (value.into_raw() >> 1).try_into().map_err(|_| FixedPointError::IntegerConversionError)?;
@@ -1302,7 +1302,7 @@ impl core::convert::TryFrom<SQ63x64> for SQ0x63 {
 impl TryFrom<Q64x64> for SQ63x64 {
     type Error = FixedPointError;
 
-    #[inline]
+    #[inline(always)]
     fn try_from(value: Q64x64) -> Result<Self, Self::Error> {
         let raw = value.into_raw().try_into().map_err(|_| FixedPointError::IntegerConversionError)?;
         Ok(SQ63x64::new(raw))
@@ -1311,7 +1311,7 @@ impl TryFrom<Q64x64> for SQ63x64 {
 
 impl core::convert::From<SQ63x64> for Q64x64 {
     #[track_caller]
-    #[inline]
+    #[inline(always)]
     fn from(value: SQ63x64) -> Self {
         let raw = value.into_raw();
 
@@ -1325,7 +1325,7 @@ impl core::convert::From<SQ63x64> for Q64x64 {
 
 impl core::convert::From<SQ1x62> for Q2x62 {
     #[track_caller]
-    #[inline]
+    #[inline(always)]
     fn from(value: SQ1x62) -> Self {
         let raw = value.into_raw();
 
@@ -1338,7 +1338,7 @@ impl core::convert::From<SQ1x62> for Q2x62 {
 }
 
 impl core::convert::From<SQ0x63> for SQ63x64 {
-    #[inline]
+    #[inline(always)]
     fn from(value: SQ0x63) -> Self {
         let raw = (value.into_raw() as i128) << 1;
         SQ63x64::new(raw)
