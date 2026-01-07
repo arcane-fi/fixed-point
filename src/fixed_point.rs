@@ -122,6 +122,40 @@ macro_rules! fixed_point {
                 Self(out)
             }
 
+            /// Convert a Qm.n to scaled u64, ceil rounding
+            #[track_caller]
+            #[inline(always)]
+            pub fn to_u64_ceil_decimals(self, decimals: u8) -> u64 {
+                let raw: u128 = u128::try_from(self.into_raw())
+                    .unwrap_or_else(|_| panic!("to_u64_ceil_decimals: raw out of range"));
+
+                let scale: u128 = $crate::fixed_point::__private::ten_pow(decimals);
+
+                // ceil((raw * scale) / 2^FRAC_BITS) == ((raw * scale) + (2^FRAC_BITS - 1)) >> 64
+                let scaled = raw * scale;
+                let rounded = scaled + ((1u128 << Self::FRAC_BITS) - 1) >> Self::FRAC_BITS;
+
+                let out: u64 = u64::try_from(rounded)
+                    .unwrap_or_else(|_| panic!("to_u64_ceil_decimals: narrowing overflow"));
+                out
+            }
+
+            /// Convert a Qm.n to a scaled u64, floor rounding
+            #[track_caller]
+            #[inline(always)]
+            pub fn to_u64_floor_decimals(self, decimals: u8) -> u64 {
+                let raw: u128 = u128::try_from(self.into_raw())
+                    .unwrap_or_else(|_| panic!("to_u64_floor_decimals: raw out of range"));
+
+                let scale: u128 = $crate::fixed_point::__private::ten_pow(decimals);
+
+                let rounded = (raw * scale) >> Self::FRAC_BITS;
+
+                let out: u64 = u64::try_from(rounded)
+                    .unwrap_or_else(|_| panic!("to_u64_floor_decimals: narrowing overflow"));
+                out
+            }
+
             // --- arithmetic helpers, storage domain ---
             #[inline(always)] pub fn saturating_add(self, rhs: Self) -> Self { Self(self.0.saturating_add(rhs.0)) }
             #[inline(always)] pub fn saturating_sub(self, rhs: Self) -> Self { Self(self.0.saturating_sub(rhs.0)) }
@@ -491,6 +525,46 @@ macro_rules! fixed_point {
 }
 
 mod __private {
+    pub(crate) fn ten_pow(exponent: impl Into<u32>) -> u128 {
+        let expo = exponent.into();
+        let value: u128 = match expo {
+            30 => 1_000_000_000_000_000_000_000_000_000_000,
+            29 => 100_000_000_000_000_000_000_000_000_000,
+            28 => 10_000_000_000_000_000_000_000_000_000,
+            27 => 1_000_000_000_000_000_000_000_000_000,
+            26 => 100_000_000_000_000_000_000_000_000,
+            25 => 10_000_000_000_000_000_000_000_000,
+            24 => 1_000_000_000_000_000_000_000_000,
+            23 => 100_000_000_000_000_000_000_000,
+            22 => 10_000_000_000_000_000_000_000,
+            21 => 1_000_000_000_000_000_000_000,
+            20 => 100_000_000_000_000_000_000,
+            19 => 10_000_000_000_000_000_000,
+            18 => 1_000_000_000_000_000_000,
+            17 => 100_000_000_000_000_000,
+            16 => 10_000_000_000_000_000,
+            15 => 1_000_000_000_000_000,
+            14 => 100_000_000_000_000,
+            13 => 10_000_000_000_000,
+            12 => 1_000_000_000_000,
+            11 => 100_000_000_000,
+            10 => 10_000_000_000,
+            9 => 1_000_000_000,
+            8 => 100_000_000,
+            7 => 10_000_000,
+            6 => 1_000_000,
+            5 => 100_000,
+            4 => 10_000,
+            3 => 1_000,
+            2 => 100,
+            1 => 10,
+            0 => 1,
+            _ => panic!("no support for exponent: {expo}"),
+        };
+
+        value
+    }
+
     macro_rules! __gen_one_const_and_pow {
         (true, $storage:ty) => {
             pub const ONE: Self = Self((1 as $storage) << Self::FRAC_BITS);
